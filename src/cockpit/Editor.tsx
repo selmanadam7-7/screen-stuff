@@ -52,7 +52,19 @@ type Drag =
   | { kind: "stage-move"; from: Vec2; original: Rect; moved: boolean }
   | { kind: "stage-resize"; handle: HandleName; original: Rect; from: Vec2 };
 
-export function Editor({ client }: { client: FrameClient | null }) {
+export function Editor({
+  client,
+  onPool,
+}: {
+  client: FrameClient | null;
+  /**
+   * Hands the media pool up to the shell.
+   *
+   * The camera lives in exactly one place -- this pool -- and the feed
+   * publisher reads it from here rather than opening the device again.
+   */
+  onPool?: (pool: MediaPool | null) => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<Drag>({ kind: "none" });
@@ -82,6 +94,11 @@ export function Editor({ client }: { client: FrameClient | null }) {
   );
 
   useEffect(() => () => pool?.destroy(), [pool]);
+
+  useEffect(() => {
+    onPool?.(pool);
+    return () => onPool?.(null);
+  }, [pool, onPool]);
 
   // ---------------------------------------------------------------------
   // Render loop

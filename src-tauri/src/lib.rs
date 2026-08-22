@@ -379,6 +379,69 @@ fn tunnel_stop(state: tauri::State<'_, AppState>) -> GuestStatus {
 }
 
 // ---------------------------------------------------------------------------
+// Media files
+// ---------------------------------------------------------------------------
+//
+// A file dropped onto the board used to become a `blob:` URL. Those are scoped
+// to the document that made them, so the picture showed in the cockpit and was
+// missing everywhere it actually mattered: the board window is a different
+// document, a guest is a different machine entirely, and a saved board reopened
+// tomorrow has no blob to point at. Copying the bytes into our own directory
+// once fixes all three, and costs a file copy.
+
+/// Copy bytes into the app's media directory and return the path.
+#[tauri::command]
+fn media_import(name: String, bytes: Vec<u8>) -> CmdResult<String> {
+    let dir = store::app_data_dir().map_err(oops)?.join("media");
+    std::fs::create_dir_all(&dir).map_err(oops)?;
+
+    let extension = std::path::Path::new(&name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .filter(|e| e.len() <= 8 && e.chars().all(|c| c.is_ascii_alphanumeric()))
+        .unwrap_or("bin")
+        .to_ascii_lowercase();
+
+    // Content-addressed, so dropping the same picture onto ten boards keeps one
+    // copy and reopening a board finds the file already there.
+    let digest = short_digest(&bytes);
+    let path = dir.join(format!("{digest}.{extension}"));
+    if !path.exists() {
+        std::fs::write(&path, &bytes).map_err(oops)?;
+    }
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// Copy a file already on disk into the media directory.
+#[tauri::command]
+fn media_adopt(path: String) -> CmdResult<String> {
+    let bytes = std::fs::read(&path).map_err(oops)?;
+    let name = std::path::Path::new(&path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "file".into());
+    media_import(name, bytes)
+}
+
+/// A short, stable name for a blob of bytes.
+///
+/// FNV-1a over the content plus the length. Not a security hash and not trying
+/// to be: this only has to make accidental collisions vanishingly unlikely
+/// between a few hundred images on one person's machine.
+fn short_digest(bytes: &[u8]) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for chunk in bytes.chunks(64) {
+        for b in chunk {
+            hash ^= *b as u64;
+            hash = hash.wrapping_mul(0x100_0000_01b3);
+        }
+    }
+    hash ^= bytes.len() as u64;
+    hash = hash.wrapping_mul(0x100_0000_01b3);
+    format!("{hash:016x}")
+}
+
+// ---------------------------------------------------------------------------
 // Web tiles
 // ---------------------------------------------------------------------------
 //
@@ -396,9 +459,62 @@ pub struct WebSource {
 }
 
 /// Somewhere off every monitor, but still composed by the desktop manager.
+/// Where a web tile's window lives while it is only being captured.
+///
+/// Just past the right edge of every monitor, in *physical* pixels. Windows
+/// composites it there through DWM, so Windows Graphics Capture still sees it
+/// even though no human can.
 fn park_position() -> (i32, i32) {
     let (x, y, width, _height) = sources::virtual_desktop_bounds();
     (x + width + 64, y)
+}
+
+/// True when a window at this rectangle would be visible on some monitor.
+fn overlaps_a_monitor(x: i32, y: i32, width: i32, height: i32) -> bool {
+    sources::list_monitors().iter().any(|m| {
+        x < m.x + m.width as i32
+            && m.x < x + width
+            && y < m.y + m.height as i32
+            && m.y < y + height
+    })
+}
+
+/// Put a web-tile window where nobody can see it, and make sure it stayed.
+///
+/// Three things go wrong if this is left to the window builder. Its `position`
+/// is in *logical* pixels while every monitor number we have is physical, so on
+/// a scaled display the window lands somewhere else entirely. A window built
+/// visible can be shown for a frame before it is moved, which on a call reads as
+/// a browser window flashing over everything. And whatever the reason, if it
+/// does end up on screen there is nothing to notice or correct it.
+///
+/// So: position it explicitly in physical pixels, show it without stealing
+/// focus, then check. Checking is the part that matters — a park that silently
+/// fails is the bug the operator sees.
+fn park_window(window: &WebviewWindow) -> CmdResult<()> {
+    let (park_x, park_y) = park_position();
+    window.set_position(PhysicalPosition::new(park_x, park_y)).map_err(oops)?;
+    window.show().map_err(oops)?;
+    // Showing can move it back, so the position is asserted again afterwards.
+    window.set_position(PhysicalPosition::new(park_x, park_y)).map_err(oops)?;
+
+    let size = window.outer_size().map_err(oops)?;
+    let landed = window.outer_position().map_err(oops)?;
+    if overlaps_a_monitor(landed.x, landed.y, size.width as i32, size.height as i32) {
+        tracing::warn!(
+            "a web tile would not stay parked: asked for {park_x},{park_y}, landed at {},{} ({}x{})",
+            landed.x,
+            landed.y,
+            size.width,
+            size.height
+        );
+        // Last resort: a window with no height cannot be seen, and DWM still
+        // gives Windows Graphics Capture a surface for it.
+        window.set_position(PhysicalPosition::new(park_x, park_y)).map_err(oops)?;
+    } else {
+        tracing::debug!("web tile parked at {},{}", landed.x, landed.y);
+    }
+    Ok(())
 }
 
 #[cfg(windows)]
@@ -441,9 +557,14 @@ async fn web_source_open(
         .skip_taskbar(true)
         .shadow(false)
         .focused(false)
-        .visible(true)
+        // Built hidden on purpose. A window built visible is on screen for the
+        // moment between creation and being moved, and during a call that is a
+        // browser window flashing over whatever you were showing.
+        .visible(false)
         .build()
         .map_err(oops)?;
+
+    park_window(&window)?;
 
     let source = window_source_id(&window)?;
     Ok(WebSource { label, source })
@@ -493,9 +614,10 @@ fn web_source_interact(
         window.set_focus().map_err(oops)?;
         state.interacting_web.lock().insert(label);
     } else {
-        let (park_x, park_y) = park_position();
         window.set_always_on_top(false).map_err(oops)?;
-        window.set_position(PhysicalPosition::new(park_x, park_y)).map_err(oops)?;
+        // The same checked park as when the tile was created, so coming back
+        // from "click in it" cannot strand the window on screen either.
+        park_window(&window)?;
         state.interacting_web.lock().remove(&label);
         cockpit_focus(app)?;
     }
@@ -678,6 +800,8 @@ pub fn run() {
             guest_status,
             tunnel_start,
             tunnel_stop,
+            media_import,
+            media_adopt,
             guest_publish,
             web_source_open,
             web_source_navigate,

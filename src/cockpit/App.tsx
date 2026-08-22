@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "../core/api";
 import { listenFor, onBoardStatus } from "../core/bus";
 import { FrameClient } from "../core/frames";
+import type { MediaPool } from "../core/media";
 import type { Stroke } from "../core/types";
 import { TooltipHost, cx } from "../ui/primitives";
 import { CameraFeeds } from "./cameraFeeds";
@@ -47,9 +48,14 @@ function Cockpit() {
   const notice = useStore((s) => s.notice);
   const doc = useStore((s) => s.doc);
   const guestsRunning = useStore((s) => s.guests.running);
+  const boardVisible = useStore((s) => s.boardVisible);
   const store = useActions();
   const shellRef = useRef<HTMLDivElement>(null);
   const cameraFeeds = useMemo(() => new CameraFeeds(), []);
+  const handlePool = useCallback(
+    (pool: MediaPool | null) => cameraFeeds.setPool(pool),
+    [cameraFeeds],
+  );
 
   /* --- the chosen look, applied to the document root --------------------- */
   useEffect(() => {
@@ -91,8 +97,12 @@ function Cockpit() {
   }, [client, cameraFeeds]);
 
   useEffect(() => {
-    cameraFeeds.sync(doc, guestsRunning);
-  }, [doc, guestsRunning, cameraFeeds]);
+    // Publish whenever anything outside this window needs to see the camera:
+    // a guest, or the board window. Exactly one process opens the device and
+    // everyone else reads what it publishes, so nothing ever competes for the
+    // hardware. The publisher is idle when nothing is watching.
+    cameraFeeds.sync(doc, guestsRunning || boardVisible);
+  }, [doc, guestsRunning, boardVisible, cameraFeeds]);
 
   /* --- keyboard, sources, boards, and what the other windows report ------ */
   useEffect(() => {
@@ -168,11 +178,14 @@ function Cockpit() {
           const file = item.getAsFile();
           if (!file) continue;
           event.preventDefault();
-          const url = URL.createObjectURL(file);
-          const probe = new Image();
-          probe.onload = () =>
-            store.addImage(url, probe.naturalWidth, probe.naturalHeight, "Pasted image");
-          probe.src = url;
+          // Kept as a real file, so the board window and any guest can load it
+          // too -- a blob URL only exists inside the window that made it.
+          void api.mediaKeep(file).then((url) => {
+            const probe = new Image();
+            probe.onload = () =>
+              store.addImage(url, probe.naturalWidth, probe.naturalHeight, "Pasted image");
+            probe.src = url;
+          });
           return;
         }
         if (item.type === "text/plain") {
@@ -200,9 +213,11 @@ function Cockpit() {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const selected = await open({ multiple: true });
       if (!selected) return;
-      const { convertFileSrc } = await import("@tauri-apps/api/core");
       for (const path of Array.isArray(selected) ? selected : [selected]) {
-        addByExtension(store, convertFileSrc(path), path.split(/[\\/]/).pop() ?? "File");
+        // Taken into the app's own directory, so the board window, a guest and
+        // this board reopened next week all still find the file.
+        const url = await api.mediaAdopt(path);
+        addByExtension(store, url, path.split(/[\\/]/).pop() ?? "File");
       }
     } catch {
       store.toast("could not open the file picker", "warn");
@@ -229,7 +244,7 @@ function Cockpit() {
           return;
         }
         for (const file of Array.from(e.dataTransfer.files)) {
-          addByExtension(store, URL.createObjectURL(file), file.name);
+          void api.mediaKeep(file).then((url) => addByExtension(store, url, file.name));
         }
       }}
     >
@@ -244,7 +259,7 @@ function Cockpit() {
         <main className="app__center">
           {panel === "board" ? (
             <>
-              <Editor client={client} />
+              <Editor client={client} onPool={handlePool} />
               <div className="canvas-dock canvas-dock--top">
                 <div className="canvas-dock__mid">
                   <Toolbar

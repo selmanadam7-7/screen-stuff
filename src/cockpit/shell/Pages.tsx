@@ -269,7 +269,7 @@ export function MediaPage() {
             e.preventDefault();
             setDragOver(false);
             for (const file of Array.from(e.dataTransfer.files)) {
-              addByExtension(store, URL.createObjectURL(file), file.name);
+              void api.mediaKeep(file).then((url) => addByExtension(store, url, file.name));
             }
           }}
         >
@@ -339,9 +339,9 @@ async function pickFiles(store: ReturnType<typeof useActions>) {
       ],
     });
     if (!selected) return;
-    const { convertFileSrc } = await import("@tauri-apps/api/core");
     for (const path of Array.isArray(selected) ? selected : [selected]) {
-      addByExtension(store, convertFileSrc(path), path.split(/[\\/]/).pop() ?? "File");
+      const url = await api.mediaAdopt(path);
+      addByExtension(store, url, path.split(/[\\/]/).pop() ?? "File");
     }
   } catch (err) {
     store.toast(`could not open that file: ${err}`, "warn");

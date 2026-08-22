@@ -6,12 +6,21 @@
  * rendering a camera tile would open *their own* webcam — which is worse than
  * showing nothing at all.
  *
- * So while a guest link is open, the host encodes each camera tile to JPEG and
- * pushes it into a named feed. Guests subscribe to that feed like any other
- * source, and everything downstream — the security gate, the renderer, the
- * resolution ladder — works without knowing the difference.
+ * So while anyone outside this window needs to see it, the host encodes each
+ * camera tile to JPEG and pushes it into a named feed. Guests and the board
+ * window subscribe to that feed like any other source, and everything
+ * downstream — the security gate, the renderer, the resolution ladder — works
+ * without knowing the difference.
+ *
+ * The frames are read from the camera element the cockpit's `MediaPool` already
+ * has open. This file used to call `getUserMedia` itself, which meant one
+ * webcam with two readers in this window alone — three once the board window
+ * opened its own — and the exclusive-access devices people actually own
+ * (capture cards, DSLR utilities, virtual cameras) answered that by handing
+ * everyone frames that came and went.
  */
 
+import type { MediaPool } from "../core/media";
 import type { FrameClient } from "../core/frames";
 import type { BoardDoc, Tile } from "../core/types";
 
@@ -33,9 +42,9 @@ interface Publisher {
   tileId: string;
   deviceId?: string;
   slot: number;
-  video: HTMLVideoElement;
+  /** The tile being published, so the pool can be asked for its camera. */
+  tile: Tile;
   canvas: HTMLCanvasElement;
-  stream: MediaStream | null;
   timer: number | null;
   stopped: boolean;
   seq: number;
@@ -45,7 +54,13 @@ export class CameraFeeds {
   private publishers = new Map<string, Publisher>();
   private nextSlot = 9000; // well clear of the stream ids the pools hand out
   private client: FrameClient | null = null;
+  private pool: MediaPool | null = null;
   private active = false;
+
+  /** The pool whose camera this publishes. Nothing is published without one. */
+  setPool(pool: MediaPool | null) {
+    this.pool = pool;
+  }
 
   setClient(client: FrameClient | null) {
     if (this.client === client) return;
@@ -59,7 +74,7 @@ export class CameraFeeds {
    */
   sync(doc: BoardDoc, active: boolean) {
     this.active = active;
-    if (!this.client || !active) {
+    if (!this.client || !this.pool || !active) {
       this.stopAll();
       return;
     }
@@ -78,60 +93,44 @@ export class CameraFeeds {
     }
 
     for (const [tileId, tile] of wanted) {
-      if (!this.publishers.has(tileId)) this.start(tileId, (tile as any).deviceId);
+      const publisher = this.publishers.get(tileId);
+      // Keep the tile fresh: the pump asks the pool for this tile's camera, and
+      // a tile that moved to another device has to ask for the new one.
+      if (publisher) publisher.tile = tile;
+      else this.start(tile);
     }
   }
 
-  private start(tileId: string, deviceId?: string) {
+  private start(tile: Tile) {
     const client = this.client;
     if (!client) return;
 
     const slot = this.nextSlot++;
-    const video = document.createElement("video");
-    video.autoplay = true;
-    video.muted = true;
-    video.playsInline = true;
-
     const publisher: Publisher = {
-      tileId,
-      deviceId,
+      tileId: tile.id,
+      deviceId: (tile as { deviceId?: string }).deviceId,
       slot,
-      video,
+      tile,
       canvas: document.createElement("canvas"),
-      stream: null,
       timer: null,
       stopped: false,
       seq: 0,
     };
-    this.publishers.set(tileId, publisher);
-    client.openFeed(slot, cameraFeedName(tileId));
+    this.publishers.set(tile.id, publisher);
+    client.openFeed(slot, cameraFeedName(tile.id));
 
-    navigator.mediaDevices
-      .getUserMedia({
-        video: deviceId ? { deviceId: { exact: deviceId } } : { width: 1280, height: 720 },
-        audio: false,
-      })
-      .then((stream) => {
-        if (publisher.stopped) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        publisher.stream = stream;
-        video.srcObject = stream;
-        void video.play().catch(() => undefined);
-        publisher.timer = window.setInterval(() => this.pump(publisher), 1000 / FEED_FPS);
-      })
-      .catch((err) => {
-        client.log(`could not publish the camera to guests: ${err}`, "warn");
-        this.stop(tileId);
-      });
+    // No getUserMedia here. The pump reads whatever the pool has open, and
+    // simply does nothing until the camera is running -- which is also the
+    // right behaviour when the operator has not granted access yet.
+    publisher.timer = window.setInterval(() => this.pump(publisher), 1000 / FEED_FPS);
   }
 
   private pump(publisher: Publisher) {
     const client = this.client;
     if (!client || publisher.stopped) return;
-    const { video, canvas } = publisher;
-    if (!video.videoWidth) return;
+    const video = this.pool?.cameraElement(publisher.tile) ?? null;
+    if (!video?.videoWidth) return;
+    const { canvas } = publisher;
 
     const height = Math.round((FEED_WIDTH * video.videoHeight) / video.videoWidth) & ~1;
     if (canvas.width !== FEED_WIDTH || canvas.height !== height) {
@@ -163,8 +162,8 @@ export class CameraFeeds {
     if (!publisher) return;
     publisher.stopped = true;
     if (publisher.timer !== null) window.clearInterval(publisher.timer);
-    publisher.stream?.getTracks().forEach((track) => track.stop());
-    publisher.video.srcObject = null;
+    // The camera itself belongs to the pool; stopping a publisher must not
+    // take the picture away from the cockpit that is still showing it.
     this.client?.closeFeed(publisher.slot);
     this.publishers.delete(tileId);
   }

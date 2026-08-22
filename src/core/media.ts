@@ -287,6 +287,23 @@ export class MediaPool implements MediaResolver {
     return this.videos.get(src);
   }
 
+  /**
+   * The live camera element for a tile, once it is running.
+   *
+   * Lent out rather than copied so that publishing the camera to the board and
+   * to guests reads the same `MediaStream` this window already opened. Opening
+   * the device a second time to publish it means two consumers of one webcam,
+   * and on the exclusive-access devices people actually own -- capture cards,
+   * DSLR utilities, virtual cameras -- that shows up as a picture that flickers
+   * in and out.
+   */
+  cameraElement(tile: Tile): HTMLVideoElement | null {
+    if (tile.kind !== "camera" || this.isGuest) return null;
+    const entry = this.cameras.get(cameraKey(tile));
+    if (!entry || !entry.stream || !entry.video.videoWidth) return null;
+    return entry.video;
+  }
+
   private ensureImage(src: string) {
     let entry = this.images.get(src);
     if (!entry) {

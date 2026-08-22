@@ -300,6 +300,38 @@ export async function tunnelStop(): Promise<GuestStatus> {
   return invoke<GuestStatus>("tunnel_stop");
 }
 
+/**
+ * Keep a dropped file, and return a URL every window can load.
+ *
+ * The bytes are copied into the app's own directory and handed back through
+ * Tauri's asset protocol. Outside the app there is nothing to copy them into,
+ * so a blob URL is the honest fallback -- it works in the one window that
+ * exists there.
+ */
+export async function mediaKeep(file: File): Promise<string> {
+  if (!runningInTauri()) return URL.createObjectURL(file);
+  try {
+    const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+    const stored = await invoke<string>("media_import", { name: file.name, bytes });
+    const { convertFileSrc } = await import("@tauri-apps/api/core");
+    return convertFileSrc(stored);
+  } catch {
+    return URL.createObjectURL(file);
+  }
+}
+
+/** The same, for a file already on disk. */
+export async function mediaAdopt(path: string): Promise<string> {
+  const { convertFileSrc } = await import("@tauri-apps/api/core");
+  if (!runningInTauri()) return convertFileSrc(path);
+  try {
+    return convertFileSrc(await invoke<string>("media_adopt", { path }));
+  } catch {
+    // Still shows in this window; just not saved with the board.
+    return convertFileSrc(path);
+  }
+}
+
 export async function guestPublish(
   doc: unknown,
   frame: unknown,

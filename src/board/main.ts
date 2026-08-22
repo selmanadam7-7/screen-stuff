@@ -81,6 +81,12 @@ async function boot() {
       fps: state.doc.fps,
       quality: state.doc.quality,
       onFrame: markDirty,
+      // A reader, not an owner. The cockpit already holds the camera; a second
+      // getUserMedia on the same device from this webview fights it for the
+      // hardware, and both ends get frames that come and go. The cockpit
+      // publishes what it sees as a feed and this window subscribes to it,
+      // which is exactly what a guest does.
+      role: "guest",
     });
   }
 
@@ -130,9 +136,24 @@ const currentScale = () => canvas.width / Math.max(1, state.frame.w);
 
 let lastFpsSample = performance.now();
 let framesSinceSample = 0;
+let lastDrawAt = 0;
 
 function tick(now: number) {
   requestAnimationFrame(tick);
+
+  // Draw at the output frame rate and no faster.
+  //
+  // Anything with moving video redraws every tick whether or not a new frame
+  // arrived, and on a 165 Hz monitor that meant compositing four captured
+  // displays two hundred times a second to feed a 30 fps share. The work is
+  // invisible in the output and it competes with the capture and encode
+  // threads for the same machine, which is what made tiles stutter in and out
+  // during a call.
+  const targetFps = Math.min(120, Math.max(1, state.doc.fps || 30));
+  // A little slack, or a frame lands just under the interval and waits a whole
+  // extra tick, halving the effective rate.
+  const minGap = 1000 / targetFps - 2;
+  if (now - lastDrawAt < minGap) return;
 
   // Live video keeps changing without telling us, so those tiles always redraw.
   const hasLiveElementMedia = state.doc.tiles.some(
@@ -141,6 +162,7 @@ function tick(now: number) {
   const hasTemporaryInk = state.doc.strokes.some((s) => s.fadeAfterMs);
   if (!state.dirty && !hasLiveElementMedia && !hasTemporaryInk) return;
   state.dirty = false;
+  lastDrawAt = now;
 
   if (hasTemporaryInk) {
     const trimmed = expireStrokes(state.doc, now);
