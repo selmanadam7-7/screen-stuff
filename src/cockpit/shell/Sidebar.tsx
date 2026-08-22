@@ -18,6 +18,7 @@ import {
   LayersIcon,
   LockedIcon,
   SettingsIcon,
+  StageIcon,
   tileIcon,
 } from "../../ui/icons";
 import { Badge, IconButton, MenuButton, SearchField, cx } from "../../ui/primitives";
@@ -69,6 +70,11 @@ export function Sidebar({ onAddScreens }: { onAddScreens: () => void }) {
           trailing={ChevronDownIcon}
           align="start"
           entries={[
+            // First, and always present. Every other entry navigates away from
+            // the board, and a menu that can only take you away from the one
+            // screen that matters is a trap.
+            { label: "Board", icon: StageIcon, onSelect: () => store.setPanel("board") },
+            { separator: true },
             { label: "Boards", icon: BoardIcon, onSelect: () => store.setPanel("boards") },
             { label: "Media", icon: ImageIcon, onSelect: () => store.setPanel("media") },
             { label: "Guests", icon: EyeIcon, onSelect: () => store.setPanel("guests") },
@@ -144,6 +150,12 @@ export function Sidebar({ onAddScreens }: { onAddScreens: () => void }) {
 
       <footer className="sidebar__foot">
         <IconButton icon={AddIcon} label="Add screens" onClick={onAddScreens} />
+        <IconButton
+          icon={StageIcon}
+          label="Back to the board"
+          active={panel === "board"}
+          onClick={() => store.setPanel("board")}
+        />
         <IconButton icon={BoardIcon} label="Boards" onClick={() => store.setPanel("boards")} />
         <IconButton icon={ImageIcon} label="Media" onClick={() => store.setPanel("media")} />
         <span className="sidebar__foot-spacer" />

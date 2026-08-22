@@ -181,23 +181,43 @@ then parks it again. Same trade OBS makes.
 
 ## Guest links
 
-Open a link from the **Guests** tab and anyone on your network can watch the
-board in a browser — no account, no install. They are not sent a video: they get
-the board *document* and open the same source streams the engine is already
-producing, and run the same renderer. That is what makes free-roaming cheap — a
-guest who zooms into one tile is drawing the same document at a different view.
+A guest opens a link and sees the board in their browser. They get the board
+*document* and subscribe to the same source streams, then run the same renderer
+the cockpit does -- so they can look around on their own, draw, and drop a file
+in, without any of that costing you a second encode.
 
-Three toggles control what they can do: **draw** (their marks become ordinary ink
-you can clear), **look around on their own**, and **drop files in** (images and
-PDFs, 12 MB).
+The security boundary: a guest may only open sources the published board
+actually uses. Take a tile off the board and their access to it stops in the
+same breath.
 
-The security boundary is the important part: **a guest may only open sources the
-published board actually uses.** Take a tile off the board and their access to
-that source is cut immediately. The listener is off until you open it, lives on
-its own port, and carries its own short token — not the local one.
+### How far the link reaches
 
-For guests further away than your own network, point a tunnel at the port. See
-[`docs/ROADMAP.md`](docs/ROADMAP.md) for where the per-guest encode ceiling sits.
+Two choices, and the Share dialog makes you pick rather than burying it:
+
+**This network only** (the default). The guest server listens on this machine.
+Anyone on the same wifi can open the link; nobody else can reach it at all.
+
+**Anywhere.** Opens a public `https://….trycloudflare.com` address that
+forwards to that same loopback port. `cloudflared` dials *out* to Cloudflare, so
+it needs no port forwarding, no static address and no router conversation -- it
+works from a hotel, an office network, or behind CGNAT. No account and no
+payment either.
+
+The helper binary is fetched once, on the first use, into
+`%APPDATA%\screen-drop\cloudflared.exe`, and only over HTTPS from Cloudflare's
+own repository. It is about 40 MB, which is why it is not in the 2.6 MB
+installer.
+
+What that costs, said plainly:
+
+- The guest server is reachable from the internet while the tunnel is up. The
+  16-character token in the link is what keeps strangers out -- treat the link
+  like a password. Closing the guest link takes the public address down with it.
+- The address is random and changes every session, so yesterday's link is dead.
+  Good for security, mildly annoying for a recurring meeting.
+- Frames pass through Cloudflare. They are JPEG over TLS, but not end-to-end
+  encrypted, and someone else's machine is carrying them. If that matters for a
+  particular call, stay on the local option.
 
 ## Boards
 
@@ -270,6 +290,7 @@ node scripts/check-board.mjs <ws-url> out.png                           # end-to
 node scripts/shoot.mjs <url> out.png                                    # screenshot the cockpit
 node scripts/check-stage.mjs [base-url]                                 # drive the stage in a real browser
 node scripts/check-layout.mjs [base-url]                                # measure the shell at five widths
+node scripts/check-tunnel.mjs                                           # prove off-network sharing really works
 node scripts/shoot-stage.mjs <out-dir> [base-url]                       # the stage in every state
 node scripts/make-icons.mjs                                             # redraw the app icon
 ```
@@ -290,7 +311,7 @@ without it, and the smaller gaps.
 ## Tests
 
 ```
-cargo test    60 passing   engine, feeds, protocol, sources, store, guests
+cargo test    70 passing   engine, feeds, protocol, sources, store, guests, tunnel
 vitest       177 passing   geometry, document, stage, resize, wire, render, frames, design
 ```
 

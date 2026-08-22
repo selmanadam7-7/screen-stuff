@@ -243,13 +243,31 @@ export interface GuestInfo {
   view: { x: number; y: number; w: number; h: number } | null;
 }
 
+/** How far the guest link reaches. */
+export interface TunnelStatus {
+  state: "off" | "preparing" | "starting" | "running" | "failed";
+  url: string | null;
+  message: string;
+}
+
 export interface GuestStatus {
   running: boolean;
+  /** For someone on this network. */
   link: string | null;
+  /** For someone anywhere, once the tunnel is open. */
+  publicLink: string | null;
+  tunnel: TunnelStatus;
   guests: GuestInfo[];
 }
 
-const NO_GUESTS: GuestStatus = { running: false, link: null, guests: [] };
+const NO_TUNNEL: TunnelStatus = { state: "off", url: null, message: "" };
+const NO_GUESTS: GuestStatus = {
+  running: false,
+  link: null,
+  publicLink: null,
+  tunnel: NO_TUNNEL,
+  guests: [],
+};
 
 export async function guestStart(): Promise<GuestStatus> {
   if (!runningInTauri()) return NO_GUESTS;
@@ -264,6 +282,22 @@ export async function guestStop(): Promise<GuestStatus> {
 export async function guestStatus(): Promise<GuestStatus> {
   if (!runningInTauri()) return NO_GUESTS;
   return invoke<GuestStatus>("guest_status");
+}
+
+/**
+ * Open a public address for the guest link.
+ *
+ * Slow the first time -- it downloads the tunnel helper -- so the caller has to
+ * show that something is happening.
+ */
+export async function tunnelStart(): Promise<GuestStatus> {
+  if (!runningInTauri()) return NO_GUESTS;
+  return invoke<GuestStatus>("tunnel_start");
+}
+
+export async function tunnelStop(): Promise<GuestStatus> {
+  if (!runningInTauri()) return NO_GUESTS;
+  return invoke<GuestStatus>("tunnel_stop");
 }
 
 export async function guestPublish(

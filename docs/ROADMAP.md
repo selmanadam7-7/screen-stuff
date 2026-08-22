@@ -11,7 +11,8 @@
 - **The cockpit** — source rail with live previews, editor canvas, inspector,
   minimap, scene strip, health readout, and a collapsed strip for mid-call.
 - **Share mode** — the board is a real window; share it in anything.
-- **Guest links** — a second listener on the local network, off by default, with
+- **Guest links** — a second listener, off by default, on the local network or
+  through a Cloudflare tunnel, with
   its own short token. Guests run the same renderer, may only reach the sources
   actually on the board, and can draw, drop files and roam if you let them.
 - **Boards and templates** — saved as JSON, autosaved once named, atomic writes.
@@ -43,19 +44,22 @@ Slack today, carries audio, and is what most calls use anyway. Camera mode buys
 you two things: it frees the screen-share slot, and it works in the handful of
 places where sharing is awkward. It is a real gap, not a fatal one.
 
-### Guests beyond the local network
+### Guests beyond the local network — done, with a ceiling
 
-The guest link works for anyone on the same network. For someone across the
-country you currently need to point a tunnel at the port.
+**Built.** Share -> **Anywhere** opens a Cloudflare quick tunnel to the guest
+port and hands out a public `https://….trycloudflare.com` link. Outbound only,
+so no port forwarding and no static address; no account and no payment. The
+helper is fetched once on first use rather than shipped in the installer.
 
-**What it needs.** Either a hosted relay you run, or an SFU. The architecture
-already assumes this: guests receive a document and open per-tile streams, so
-swapping the transport for LiveKit means replacing the socket, not the design.
+**Where the ceiling still is.** Every guest gets their own encode of every tile
+they can see. That is fine for a handful of people and wrong for fifty — past
+roughly ten, an SFU stops being an optimisation and becomes the only way. The
+architecture already assumes that swap: guests receive a document and open
+per-tile streams, so moving to an SFU means replacing the socket, not the design.
 
-**Where the ceiling is.** Every guest currently gets their own encode of every
-tile they can see. That is fine for a handful of people and wrong for fifty —
-past roughly ten, an SFU stops being an optimisation and starts being the only
-way.
+**What a hosted relay would buy on top.** A stable address that survives a
+restart, so a recurring meeting can keep one link; and frames that do not pass
+through a third party. Neither is worth running infrastructure for yet.
 
 ### Smaller things
 

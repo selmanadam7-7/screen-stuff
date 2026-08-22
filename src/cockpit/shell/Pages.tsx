@@ -14,6 +14,7 @@ import {
   FileIcon,
   ImageIcon,
   NoteIcon,
+  BackIcon,
   ScreenIcon,
   SearchIcon,
   TemplateIcon,
@@ -45,6 +46,24 @@ import { tileName } from "./Sidebar";
    Boards
    ========================================================================== */
 
+/**
+ * The way back to the board.
+ *
+ * Every page gets one, in the same place, before the title. Without it the only
+ * exit was a chevron in the sidebar that did not list the board at all, so
+ * opening Settings was a one-way door.
+ */
+function BackToBoard() {
+  const store = useActions();
+  return (
+    <button className="page__back" onClick={() => store.setPanel("board")}>
+      <BackIcon size={14} aria-hidden />
+      Board
+    </button>
+  );
+}
+
+
 export function BoardsPage() {
   const boards = useStore((s) => s.boards);
   const boardId = useStore((s) => s.boardId);
@@ -67,6 +86,7 @@ export function BoardsPage() {
     <div className="page">
       <header className="page__head">
         <div>
+          <BackToBoard />
           <h1 className="page__title">Boards</h1>
           <p className="page__sub">Everything you have saved, and the layouts you start from.</p>
         </div>
@@ -223,6 +243,7 @@ export function MediaPage() {
     <div className="page">
       <header className="page__head">
         <div>
+          <BackToBoard />
           <h1 className="page__title">Media</h1>
           <p className="page__sub">Everything on this board, and anything you want to add.</p>
         </div>
@@ -346,6 +367,7 @@ export function SettingsPage() {
     <div className="page">
       <header className="page__head">
         <div>
+          <BackToBoard />
           <h1 className="page__title">Settings</h1>
           <p className="page__sub">How Screen Drop looks and how it captures.</p>
         </div>

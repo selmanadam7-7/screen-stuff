@@ -3,8 +3,15 @@
  *
  * The reference lays this out as invite / link / permissions / access summary,
  * and that shape is kept. What it is wired to is what Screen Drop actually has:
- * a link on the local network, three live powers, and a real roster. There is no
- * invite-by-email box here, because there are no accounts to invite.
+ * a real link, three live powers, and a real roster. There is no invite-by-email
+ * box here, because there are no accounts to invite.
+ *
+ * The link has two reaches, and the difference matters enough to be a visible
+ * choice rather than a setting: **this network**, which is a server on your own
+ * machine and goes no further, and **anywhere**, which opens a public address
+ * through Cloudflare. The second is what you need for a call with someone in
+ * another building, and it is also the one that puts a door onto the internet,
+ * so it says so.
  */
 
 import { useState } from "react";
@@ -29,13 +36,26 @@ export function ShareBoard({ open, onClose }: { open: boolean; onClose: () => vo
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const tunnel = guests.tunnel;
+  const publicOn = tunnel.state === "running" && !!guests.publicLink;
+  const working = tunnel.state === "preparing" || tunnel.state === "starting";
+  // The address people are actually given, so Copy and the readout can never
+  // disagree about which one is live.
+  const shareUrl = publicOn ? guests.publicLink : guests.link;
+
   const sourceCount = doc.tiles.filter((t) => t.kind === "source" || t.kind === "web").length;
 
   const copy = async () => {
-    if (!guests.link) return;
-    await navigator.clipboard.writeText(guests.link);
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  const toggleReach = async () => {
+    setBusy(true);
+    await (publicOn ? store.stopTunnel() : store.startTunnel());
+    setBusy(false);
   };
 
   const toggleLink = async () => {
@@ -69,14 +89,56 @@ export function ShareBoard({ open, onClose }: { open: boolean; onClose: () => vo
                 <span className="share__link-title">
                   {guests.running ? "Anyone with the link" : "The link is closed"}
                 </span>
-                <code>{guests.link ?? "open the link to generate one"}</code>
+                <code>{shareUrl ?? "open the link to generate one"}</code>
               </div>
-              {guests.running && (
+              {guests.running && shareUrl && (
                 <Button size="sm" onClick={() => void copy()}>
                   {copied ? "Copied" : "Copy link"}
                 </Button>
               )}
             </div>
+
+            {guests.running && (
+              <div className="reach">
+                <ReachOption
+                  active={!publicOn && !working}
+                  disabled={busy || working}
+                  title="This network only"
+                  detail="A server on your machine. It cannot be reached from outside your wifi."
+                  onSelect={() => void (publicOn ? toggleReach() : undefined)}
+                />
+                <ReachOption
+                  active={publicOn}
+                  busy={working}
+                  disabled={busy}
+                  title="Anywhere"
+                  detail={
+                    working
+                      ? tunnel.message || "opening a public address"
+                      : "A public address through Cloudflare, for people off your network."
+                  }
+                  onSelect={() => void (publicOn ? undefined : toggleReach())}
+                />
+              </div>
+            )}
+
+            {publicOn && (
+              <p className="share__warn">
+                <ShieldIcon size={14} aria-hidden />
+                <span>
+                  The board is reachable from the internet while this is on. The
+                  token in the link is what keeps strangers out, so treat the link
+                  like a password and close it when the call ends.
+                </span>
+              </p>
+            )}
+            {tunnel.state === "failed" && tunnel.message && (
+              <p className="share__warn is-bad">
+                <ShieldIcon size={14} aria-hidden />
+                <span>{tunnel.message}</span>
+              </p>
+            )}
+
             <Button
               block
               tone={guests.running ? "danger" : "primary"}
@@ -86,8 +148,9 @@ export function ShareBoard({ open, onClose }: { open: boolean; onClose: () => vo
               {guests.running ? "Close the link" : "Open a guest link"}
             </Button>
             <p className="field__hint">
-              The link works for anyone on your network. It lives on its own port
-              behind its own token, and closing it disconnects everyone at once.
+              The link lives on its own port behind its own token, and closing it
+              disconnects everyone at once -- and takes the public address down
+              with it.
             </p>
           </Group>
 
@@ -152,7 +215,12 @@ export function ShareBoard({ open, onClose }: { open: boolean; onClose: () => vo
               </div>
               <div>
                 <dt>Reachable from</dt>
-                <dd>Your network</dd>
+                {/* The summary has to agree with the cards above it. Saying
+                    "your network" while a public address is live would be the
+                    most dangerous sentence in the app. */}
+                <dd className={cx(publicOn && "is-warn")}>
+                  {!guests.running ? "Nowhere" : publicOn ? "Anywhere" : "Your network"}
+                </dd>
               </div>
               <div>
                 <dt>Sources exposed</dt>
@@ -190,6 +258,48 @@ export function ShareBoard({ open, onClose }: { open: boolean; onClose: () => vo
     </Modal>
   );
 }
+
+/**
+ * One of the two reaches.
+ *
+ * A pair of cards rather than a switch: "on/off" does not say what is being
+ * turned on, and this is the control that decides whether the board is on the
+ * internet.
+ */
+function ReachOption({
+  active,
+  busy,
+  disabled,
+  title,
+  detail,
+  onSelect,
+}: {
+  active: boolean;
+  busy?: boolean;
+  disabled?: boolean;
+  title: string;
+  detail: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cx("reach__option", active && "is-active", busy && "is-busy")}
+      disabled={disabled}
+      aria-pressed={active}
+      onClick={onSelect}
+    >
+      <span className="reach__mark">
+        {busy ? <span className="reach__spin" /> : active ? <CheckIcon size={12} /> : null}
+      </span>
+      <span className="reach__text">
+        <span className="reach__title">{title}</span>
+        <span className="reach__detail">{detail}</span>
+      </span>
+    </button>
+  );
+}
+
 
 function PermRow({
   icon: IconComponent,

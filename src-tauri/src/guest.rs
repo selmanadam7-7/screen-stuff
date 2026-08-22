@@ -228,6 +228,12 @@ impl GuestHub {
         self.running.lock().as_ref().map(|r| r.url.clone())
     }
 
+    /// The loopback port the guest server listens on, for anything that needs
+    /// to forward to it.
+    pub fn port(&self) -> Option<u16> {
+        self.running.lock().as_ref().map(|r| r.addr.port())
+    }
+
     pub fn set_running(&self, server: RunningGuestServer) {
         *self.running.lock() = Some(server);
     }
@@ -275,12 +281,21 @@ fn sanitise_name(raw: &str, id: u64) -> String {
     }
 }
 
-/// A short, readable token — it gets typed and read aloud, unlike the local one.
+/// The secret in a guest link.
+///
+/// Sixteen characters from a 31-symbol alphabet is about 79 bits. That is far
+/// more than a link on your own wifi needs, and roughly what it needs once the
+/// tunnel can put that same link on the internet — where the token is the only
+/// thing between a stranger and every screen you own. It is copied, never
+/// typed, so the extra length costs nothing.
+///
+/// The alphabet still leaves out `0/o`, `1/l/i`: a link does occasionally get
+/// read down a phone.
 pub fn guest_token() -> String {
     use rand::Rng;
     const ALPHABET: &[u8] = b"abcdefghjkmnpqrstuvwxyz23456789";
     let mut rng = rand::thread_rng();
-    (0..10).map(|_| ALPHABET[rng.gen_range(0..ALPHABET.len())] as char).collect()
+    (0..16).map(|_| ALPHABET[rng.gen_range(0..ALPHABET.len())] as char).collect()
 }
 
 /// The address a guest on the same network should use.
@@ -395,7 +410,7 @@ mod tests {
     fn guest_tokens_are_short_readable_and_unique() {
         let a = guest_token();
         let b = guest_token();
-        assert_eq!(a.len(), 10);
+        assert_eq!(a.len(), 16, "long enough to survive being on the internet");
         assert_ne!(a, b);
         // No characters that are ambiguous when read out loud.
         assert!(!a.contains(['0', 'o', 'l', '1', 'i']));

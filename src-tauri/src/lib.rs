@@ -17,6 +17,7 @@ pub mod protocol;
 pub mod server;
 pub mod sources;
 pub mod store;
+pub mod tunnel;
 
 use capture::CaptureEngine;
 use guest::{GuestHub, GuestInfo, Powers};
@@ -39,6 +40,8 @@ pub struct AppState {
     /// Web tiles currently pulled forward for interaction.
     interacting_web: Mutex<HashSet<String>>,
     guests: Arc<GuestHub>,
+    /// The public door onto the guest server, when one is open.
+    tunnel: Arc<tunnel::Tunnel>,
 }
 
 #[derive(Serialize)]
@@ -287,7 +290,11 @@ fn allow_media_capture(_window: &WebviewWindow) {}
 #[serde(rename_all = "camelCase")]
 pub struct GuestStatus {
     running: bool,
+    /// The address for someone on this network.
     link: Option<String>,
+    /// The address for someone anywhere, when the tunnel is up.
+    public_link: Option<String>,
+    tunnel: tunnel::TunnelStatus,
     guests: Vec<GuestInfo>,
 }
 
@@ -304,6 +311,9 @@ async fn guest_start(state: tauri::State<'_, AppState>) -> CmdResult<GuestStatus
 
 #[tauri::command]
 fn guest_stop(state: tauri::State<'_, AppState>) -> GuestStatus {
+    // Order matters: a tunnel left open after the server behind it stops is a
+    // public address pointing at whatever takes that port next.
+    state.tunnel.stop();
     state.guests.stop();
     guest_status_of(&state)
 }
@@ -328,8 +338,44 @@ fn guest_status_of(state: &tauri::State<'_, AppState>) -> GuestStatus {
     GuestStatus {
         running: state.guests.is_running(),
         link: state.guests.link(),
+        public_link: public_link_of(state),
+        tunnel: state.tunnel.status(),
         guests: state.guests.roster(),
     }
+}
+
+/// The same guest path, on the public origin instead of the LAN one.
+fn public_link_of(state: &tauri::State<'_, AppState>) -> Option<String> {
+    let origin = state.tunnel.url()?;
+    let path = state.guests.link()?;
+    // Reuse the path the guest server already published rather than rebuilding
+    // it, so the two links can never disagree about the token.
+    let path = path.split_once("//")?.1.split_once('/')?.1;
+    Some(format!("{origin}/{path}"))
+}
+
+/// Open a public address for the guest link.
+///
+/// Deliberately separate from `guest_start`: putting the board on the internet
+/// is a bigger decision than putting it on your own network, and it should take
+/// its own deliberate press.
+#[tauri::command]
+async fn tunnel_start(state: tauri::State<'_, AppState>) -> CmdResult<GuestStatus> {
+    let port = state.guests.port().ok_or("open the guest link first")?;
+    let tunnel = state.tunnel.clone();
+    // Downloads on first use and then waits on Cloudflare, so it cannot run on
+    // the thread answering this command.
+    tauri::async_runtime::spawn_blocking(move || tunnel.start(port))
+        .await
+        .map_err(|e| format!("{e}"))?
+        .map_err(|e| format!("{e:#}"))?;
+    Ok(guest_status_of(&state))
+}
+
+#[tauri::command]
+fn tunnel_stop(state: tauri::State<'_, AppState>) -> GuestStatus {
+    state.tunnel.stop();
+    guest_status_of(&state)
 }
 
 // ---------------------------------------------------------------------------
@@ -595,6 +641,7 @@ pub fn run() {
                 web_counter: Mutex::new(0),
                 interacting_web: Mutex::new(HashSet::new()),
                 guests: guest_hub,
+                tunnel: Arc::new(tunnel::Tunnel::default()),
             });
             Ok(())
         })
@@ -629,6 +676,8 @@ pub fn run() {
             guest_start,
             guest_stop,
             guest_status,
+            tunnel_start,
+            tunnel_stop,
             guest_publish,
             web_source_open,
             web_source_navigate,

@@ -172,12 +172,15 @@ function Build-Installer {
     try {
         if (-not (Test-Path (Join-Path $RepoRoot "node_modules"))) {
             Step "Installing dependencies"
-            if (Have "pnpm") { pnpm install } else { npm install }
+            # Out-Host, not bare: a native command's stdout joins this
+            # function's pipeline output, and `return $path` would then hand
+            # back an array of every build log line with the path on the end.
+            if (Have "pnpm") { pnpm install | Out-Host } else { npm install | Out-Host }
             if ($LASTEXITCODE -ne 0) { Die "Dependency install failed." }
         }
 
         Step "Building (ten to fifteen minutes the first time  - Rust is compiling)"
-        if (Have "pnpm") { pnpm tauri build } else { npx tauri build }
+        if (Have "pnpm") { pnpm tauri build | Out-Host } else { npx tauri build | Out-Host }
         if ($LASTEXITCODE -ne 0) { Die "Build failed. The output above says why." }
     } finally {
         Pop-Location
@@ -218,6 +221,10 @@ if (-not $installer) {
     Step "Building from this checkout"
     $installer = Build-Installer
 }
+# Collapse to a single path however it came back.
+if ($installer -is [array]) { $installer = $installer[-1] }
+$installer = [string]$installer
+if (-not (Test-Path $installer)) { Die "No installer to run at '$installer'." }
 
 Step "Installing"
 

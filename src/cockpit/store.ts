@@ -210,6 +210,8 @@ export interface Actions {
 
   startGuests(): Promise<void>;
   stopGuests(): Promise<void>;
+  startTunnel(): Promise<void>;
+  stopTunnel(): Promise<void>;
   refreshGuests(): Promise<void>;
   setGuestPowers(patch: Partial<api.GuestPowers>): void;
   applyGuestInk(stroke: Stroke): void;
@@ -275,7 +277,13 @@ export const useStore = create<Store>((set, get) => ({
   future: [],
   revision: 0,
 
-  guests: { running: false, link: null, guests: [] },
+  guests: {
+    running: false,
+    link: null,
+    publicLink: null,
+    tunnel: { state: "off", url: null, message: "" },
+    guests: [],
+  },
   guestPowers: { draw: true, roam: true, files: true },
 
   // -------------------------------------------------------------------------
@@ -919,6 +927,40 @@ export const useStore = create<Store>((set, get) => ({
   async stopGuests() {
     set({ guests: await api.guestStop() });
     get().toast("guest link closed");
+  },
+
+  async startTunnel() {
+    // Optimistic, because the first run downloads ~40 MB and a button that
+    // looks dead for a minute reads as broken.
+    set({
+      guests: {
+        ...get().guests,
+        tunnel: { state: "preparing", url: null, message: "setting up" },
+      },
+    });
+    try {
+      set({ guests: await api.tunnelStart() });
+      const status = get().guests;
+      get().toast(
+        status.tunnel.state === "running"
+          ? "anyone with the link can join now"
+          : status.tunnel.message || "could not open the public link",
+        status.tunnel.state === "running" ? "info" : "warn",
+      );
+    } catch (err) {
+      set({
+        guests: {
+          ...get().guests,
+          tunnel: { state: "failed", url: null, message: String(err) },
+        },
+      });
+      get().toast(`could not open the public link: ${err}`, "warn");
+    }
+  },
+
+  async stopTunnel() {
+    set({ guests: await api.tunnelStop() });
+    get().toast("the link is back to this network only");
   },
 
   async refreshGuests() {

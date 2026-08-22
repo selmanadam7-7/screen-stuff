@@ -41,6 +41,10 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 local-ip-address = "0.6"
 dirs = "5"
+# One job: fetching the cloudflared binary the first time someone shares off
+# their network. Blocking and tiny on purpose -- reqwest would pull in a second
+# async runtime for a single download.
+ureq = "2.10"
 
 # Frame path
 fast_image_resize = "5"

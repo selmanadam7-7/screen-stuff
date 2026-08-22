@@ -99,7 +99,10 @@ export function installLocalHotkeys(): () => void {
     switch (event.key) {
       case "Escape":
         event.preventDefault();
-        if (store.ink.tool) store.setInk({ tool: null });
+        // Out of a page first: if you are on Settings, nothing else on this
+        // list is what you meant by Escape.
+        if (store.panel !== "board") store.setPanel("board");
+        else if (store.ink.tool) store.setInk({ tool: null });
         else if (store.spotlight) store.setSpotlight(null);
         else if (store.stageSelected) store.selectStage(false);
         else store.select([]);

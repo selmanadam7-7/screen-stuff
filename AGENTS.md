@@ -56,6 +56,9 @@ take.
 | The installer appears to succeed but the app is not there | An older copy was running and the installer skipped the file | Close `screen-drop.exe` and run again. `install.ps1` does this for you. |
 | The window is blank or white | WebView2 runtime missing | https://developer.microsoft.com/microsoft-edge/webview2/ |
 | Tiles say "waiting for the first frame" forever | Normal for a second or two. Longer means the capture engine did not start | Check `%LOCALAPPDATA%\Screen Drop` logs, and that the source still exists |
+| A black console window opens with the app | A debug build. Release builds are windows-subsystem binaries | Install the release, do not run `target\debug\screen-drop.exe` |
+| "Anywhere" sharing sits on "setting up" | First use downloads ~40 MB of `cloudflared` | Wait, or drop `cloudflared.exe` into `%APPDATA%\screen-drop\` yourself |
+| The public link 404s or 530s for a few seconds | Cloudflare's edge has not started routing yet | Wait ten seconds and reload. `scripts/check-tunnel.mjs` proves the path works |
 
 ## After it installs
 
@@ -69,6 +72,11 @@ Tell the user this much, and no more:
    on the board is private to them. Press `0` to come back to the stage from
    anywhere.
 
+If they want to hand someone a link instead of sharing a window: **Share** ->
+**Open a guest link**, then choose **This network only** or **Anywhere**. Tell
+them what "Anywhere" means -- it puts a public address on the internet, guarded
+only by the token in the link -- and that closing the link takes it down.
+
 ## Working on the code
 
 If the request is to change the app rather than install it:
@@ -77,7 +85,7 @@ If the request is to change the app rather than install it:
 pnpm install
 pnpm app          # run it
 pnpm test         # 177 frontend tests
-pnpm test:rust    # 62 Rust tests
+pnpm test:rust    # 70 Rust tests
 pnpm check        # types and clippy, both must be clean
 ```
 
@@ -103,3 +111,6 @@ Three traps that will cost you an afternoon if you rediscover them:
 There are Playwright harnesses that drive the real app rather than a mock --
 `scripts/check-stage.mjs` and `scripts/check-layout.mjs`. Run them after
 touching the canvas or the shell. They need a dev server on port 4483.
+`scripts/check-tunnel.mjs` opens a genuine Cloudflare tunnel and fetches it back
+over the internet; it exits 3, not 1, when the shell itself has no outbound
+access, because those two failures look identical and mean opposite things.

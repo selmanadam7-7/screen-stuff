@@ -359,7 +359,7 @@ mod tests {
         assert_eq!(server.addr.ip().to_string(), "0.0.0.0", "reachable from the network");
         assert!(server.url.contains(&server.token));
         assert!(server.url.starts_with("http://"));
-        assert_eq!(server.token.len(), 10);
+        assert_eq!(server.token.len(), 16);
     }
 
     #[tokio::test]
