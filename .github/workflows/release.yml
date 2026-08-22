@@ -31,7 +31,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       # Rust builds are slow and almost entirely cacheable.
-      - uses: swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
 
