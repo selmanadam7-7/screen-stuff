@@ -1,0 +1,71 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Screen Drop",
+  "version": "0.1.0",
+  "identifier": "com.brandbased.screendrop",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:4483",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Screen Drop — Cockpit",
+        "url": "index.html",
+        "width": 1520,
+        "height": 980,
+        "minWidth": 1080,
+        "minHeight": 700,
+        "center": true,
+        "resizable": true,
+        "decorations": true,
+        "visible": true,
+        "backgroundColor": "#0B0D12"
+      },
+      {
+        "label": "board",
+        "title": "Screen Drop",
+        "url": "board.html",
+        "width": 1280,
+        "height": 720,
+        "minWidth": 480,
+        "minHeight": 270,
+        "center": true,
+        "resizable": true,
+        "decorations": false,
+        "visible": false,
+        "skipTaskbar": false,
+        "shadow": false,
+        "backgroundColor": "#000000"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: asset: http://asset.localhost https: http:; media-src 'self' data: blob: https: http:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost ws://127.0.0.1:* http://127.0.0.1:* https: wss: data: blob:; frame-src https: http: blob:",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/**", "$HOME/**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "shortDescription": "Every screen you have, on one board, in any call.",
+    "longDescription": "Screen Drop is an infinite board that holds your monitors, windows, screen regions, camera and anything you paste — then hands the whole thing to Discord, Meet or Zoom, and to guests on a link.",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  }
+}

@@ -1,0 +1,105 @@
+# Instructions for an AI agent
+
+If someone has asked you to install Screen Drop, this file is what you need.
+It is written for you, not for them.
+
+Screen Drop is a Windows desktop app. It puts every monitor, window and camera
+you own on one infinite canvas, and hands a rectangle of that canvas to Discord,
+Meet, Zoom or Teams as an ordinary shareable window.
+
+---
+
+## Install it
+
+Run this from the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install.ps1
+```
+
+That script does the whole job: checks the machine, gets an installer (from the
+latest GitHub release if there is one, otherwise by building this checkout),
+runs it silently, and then verifies the app is really there rather than assuming
+it. It exits non-zero and says why if anything fails.
+
+To see what it would do without doing it:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install.ps1 -CheckOnly
+```
+
+Nothing here needs administrator rights. Everything installs per-user under
+`%LOCALAPPDATA%\Screen Drop`.
+
+## Before you start, know this
+
+**It is Windows-only, and that is not a gap to work around.** Capture goes
+through Windows Graphics Capture, which is a Windows API with no equivalent
+elsewhere. On macOS or Linux, say so and stop. Do not try to build it.
+
+**It is unsigned.** Windows SmartScreen will show "Windows protected your PC"
+the first time a downloaded copy runs. That is expected, not a failure. The user
+clicks **More info** then **Run anyway**. Tell them this before it happens
+rather than after. (A copy built locally has no such warning.)
+
+**Building from source takes ten to fifteen minutes** and needs Rust, Node 18+
+and the MSVC build tools. `install.ps1` checks for all three and names exactly
+what is missing. Do not start a build without telling the user how long it will
+take.
+
+## What to check when it goes wrong
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Typing "screen drop" in Windows Search finds nothing | Not installed; they are running a loose `.exe` from the repo | Run `install.ps1`. Only Start Menu shortcuts are indexed. |
+| `link.exe not found`, or a build script fails in a C dependency | MSVC build tools missing | Visual Studio Installer -> "Desktop development with C++" |
+| The installer appears to succeed but the app is not there | An older copy was running and the installer skipped the file | Close `screen-drop.exe` and run again. `install.ps1` does this for you. |
+| The window is blank or white | WebView2 runtime missing | https://developer.microsoft.com/microsoft-edge/webview2/ |
+| Tiles say "waiting for the first frame" forever | Normal for a second or two. Longer means the capture engine did not start | Check `%LOCALAPPDATA%\Screen Drop` logs, and that the source still exists |
+
+## After it installs
+
+Tell the user this much, and no more:
+
+1. Open Screen Drop from the Start Menu.
+2. **Add screens** to put monitors, windows or a camera on the board.
+3. **Go live**, then share the window called **Screen Drop - Board** in
+   whichever call app they use. It is an ordinary window; every app can share it.
+4. Only the blue rectangle -- the **stage** -- is ever shared. Everything else
+   on the board is private to them. Press `0` to come back to the stage from
+   anywhere.
+
+## Working on the code
+
+If the request is to change the app rather than install it:
+
+```bash
+pnpm install
+pnpm app          # run it
+pnpm test         # 177 frontend tests
+pnpm test:rust    # 62 Rust tests
+pnpm check        # types and clippy, both must be clean
+```
+
+Read [`README.md`](README.md) for the architecture and
+[`docs/DESIGN.md`](docs/DESIGN.md) for the interface rules before changing
+anything visual. Both exist because the decisions in them are not guessable from
+the code.
+
+Three traps that will cost you an afternoon if you rediscover them:
+
+- `[lib] crate-type` in `src-tauri/Cargo.toml` must stay `["rlib"]`. The Tauri
+  template's `cdylib` is for mobile, and building one with `opt-level = 1` plus
+  incremental makes rustc leak `anon.*.llvm.*` symbols across codegen units --
+  LNK1120 on every rebuild.
+- `[profile.dev] opt-level = 1` is required, not just
+  `[profile.dev.package."*"]`. The resize and encode entry points are generic, so
+  their bodies compile at *this* crate's opt-level. At `0`, one 1440p frame takes
+  434 ms instead of 4.6.
+- A grid track written `1fr` or `auto` will not shrink below its content's
+  min-content width, and a text input reports about twenty characters. Use
+  `minmax(0, 1fr)`. Two shipped layout bugs came from exactly this.
+
+There are Playwright harnesses that drive the real app rather than a mock --
+`scripts/check-stage.mjs` and `scripts/check-layout.mjs`. Run them after
+touching the canvas or the shell. They need a dev server on port 4483.

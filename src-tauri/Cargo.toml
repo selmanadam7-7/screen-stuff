@@ -1,0 +1,92 @@
+[package]
+name = "screen-drop"
+version = "0.1.0"
+description = "An infinite board that holds every screen you have, and hands it to any call as a window or a webcam."
+authors = ["Adam Selman"]
+edition = "2021"
+rust-version = "1.82"
+
+[lib]
+name = "screen_drop_lib"
+# Desktop only, so an rlib is all the binary needs. The template's extra
+# `cdylib`/`staticlib` targets exist for mobile, and building a cdylib with
+# `opt-level = 1` and incremental compilation on makes rustc leak internal
+# `anon.*.llvm.*` symbols across codegen units — LNK1120 on every dev rebuild.
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2.8", features = ["tray-icon", "image-png", "protocol-asset"] }
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-opener = "2"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "net", "time", "io-util"] }
+axum = { version = "0.7", features = ["ws"] }
+tower-http = { version = "0.6", features = ["cors", "fs"] }
+futures-util = "0.3"
+
+anyhow = "1"
+thiserror = "2"
+parking_lot = "0.12"
+uuid = { version = "1", features = ["v4", "serde"] }
+rand = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+local-ip-address = "0.6"
+dirs = "5"
+
+# Frame path
+fast_image_resize = "5"
+jpeg-encoder = { version = "0.6", features = ["simd"] }
+
+
+[target.'cfg(windows)'.dependencies]
+windows-capture = "1.5"
+# Used only to auto-grant camera and microphone in our own webviews. Must track
+# the version Tauri itself uses, or the COM types will not line up.
+webview2-com = "0.38"
+windows = { version = "0.60", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Graphics_Dwm",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_System_Threading",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Com",
+] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+# Dependencies compile optimised even in dev builds. Without this the SIMD
+# resize and JPEG encode run unoptimised, and one 1440p frame takes ~400 ms
+# instead of a few, which makes a dev build useless for judging performance.
+[profile.dev.package."*"]
+opt-level = 3
+
+# And our own crate needs some optimisation too, because the resize and encode
+# entry points are generic: their bodies monomorphise into *this* crate and so
+# compile at *this* opt-level. At 0 a single 1440p thumbnail frame took 434 ms;
+# at 1 it is a couple, and builds are still quick and still debuggable.
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

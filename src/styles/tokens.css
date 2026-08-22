@@ -1,0 +1,317 @@
+/*
+ * Screen Drop's design system.
+ *
+ * Every colour below was measured out of the reference screenshots rather than
+ * matched by eye — `pnpm design:palette` re-runs the extraction. The anchors it
+ * found, and which the ramps are built around:
+ *
+ *   primary   #0562FE     ink        #1E2329
+ *   tint      #EFF4FE     border     #DDDDE1
+ *   success   #14B18D     warning    #FD9F0A
+ *   danger    #FA3928     violet     #846AFC
+ *   note      #FEF4D7     arctic     #ECF4FC
+ *
+ * Five looks ship, matching the five reference directions. They are token
+ * overrides on [data-look], so nothing downstream knows which one is on.
+ */
+
+@import "@fontsource-variable/inter";
+
+:root {
+  /* --- neutral ramp: cool, biased toward the measured #1E2329 ink --------- */
+  --n-0: #ffffff;
+  --n-25: #fcfcfd;
+  --n-50: #f8f9fb;
+  --n-100: #f1f3f6;
+  --n-150: #e9ebef;
+  --n-200: #dddde1;
+  --n-300: #c7cad1;
+  --n-400: #9aa0ab;
+  --n-500: #6c7480;
+  --n-600: #4e5560;
+  --n-700: #343a44;
+  --n-800: #252a32;
+  --n-900: #1e2329;
+  --n-950: #141820;
+  --n-1000: #0d1014;
+
+  /* --- primary ramp, anchored on #0562FE --------------------------------- */
+  --b-50: #eff4fe;
+  --b-100: #dbe6ff;
+  --b-200: #bcd1fd;
+  --b-300: #8db2fc;
+  --b-400: #4e8afe;
+  --b-500: #0562fe;
+  --b-600: #0455e4;
+  --b-700: #0345ba;
+  --b-800: #05379180;
+  --b-900: #062e77;
+
+  /* --- semantic hues, all measured --------------------------------------- */
+  --success: #14b18d;
+  --success-tint: #e4f7f2;
+  --warning: #fd9f0a;
+  --warning-tint: #fef3e0;
+  --danger: #fa3928;
+  --danger-tint: #feeceb;
+  --violet: #846afc;
+  --violet-tint: #efecff;
+  --note: #fef4d7;
+  --note-ink: #6b5518;
+
+  /* Avatar and cursor colours. Presence is identity, so these are a fixed set
+     assigned by hash, never random — the same person is the same colour twice. */
+  --who-1: #0562fe;
+  --who-2: #f97316;
+  --who-3: #14b18d;
+  --who-4: #846afc;
+  --who-5: #ec4899;
+  --who-6: #eab308;
+  --who-7: #06b6d4;
+  --who-8: #ef4444;
+
+  /* --- surfaces (overridden per look) ------------------------------------ */
+  --canvas: #fcfcfd;
+  --canvas-dot: rgba(30, 35, 41, 0.16);
+  --panel: #ffffff;
+  --panel-2: var(--n-50);
+  --panel-hover: var(--n-100);
+  --panel-active: var(--b-50);
+  --chrome: #ffffff;
+  --line: var(--n-200);
+  --line-soft: var(--n-150);
+  --overlay: rgba(20, 24, 32, 0.34);
+
+  --ink: var(--n-900);
+  --ink-2: var(--n-500);
+  --ink-3: var(--n-400);
+  --on-primary: #ffffff;
+
+  --accent: var(--b-500);
+  --accent-hover: var(--b-600);
+  --accent-tint: var(--b-50);
+  --accent-line: var(--b-200);
+  --accent-ink: var(--b-700);
+
+  /* Glass is a no-op except in the looks that use it. */
+  --glass-blur: none;
+  --glass-panel: var(--panel);
+
+  /* --- type -------------------------------------------------------------- */
+  --ui: "Inter Variable", "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+
+  --t-11: 11px;
+  --t-12: 12px;
+  --t-13: 13px;
+  --t-14: 14px;
+  --t-16: 16px;
+  --t-20: 20px;
+  --t-26: 26px;
+  --t-32: 32px;
+
+  /* --- shape ------------------------------------------------------------- */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-xl: 14px;
+  --r-2xl: 18px;
+  --r-full: 999px;
+
+  /* --- elevation --------------------------------------------------------- */
+  --sh-xs: 0 1px 2px rgba(20, 24, 32, 0.06);
+  --sh-sm: 0 1px 3px rgba(20, 24, 32, 0.08), 0 1px 2px rgba(20, 24, 32, 0.04);
+  --sh-md: 0 4px 12px rgba(20, 24, 32, 0.08), 0 1px 3px rgba(20, 24, 32, 0.05);
+  --sh-lg: 0 10px 32px rgba(20, 24, 32, 0.12), 0 2px 8px rgba(20, 24, 32, 0.06);
+  --sh-xl: 0 24px 60px rgba(20, 24, 32, 0.18), 0 4px 12px rgba(20, 24, 32, 0.08);
+  --sh-focus: 0 0 0 3px rgba(5, 98, 254, 0.18);
+
+  /* --- motion ------------------------------------------------------------ */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --fast: 120ms;
+  --normal: 200ms;
+}
+
+/* ==========================================================================
+   The five looks
+   ========================================================================== */
+
+/* 1 — Pure white studio. The default, and what the ten product pages use. */
+[data-look="pure-white"] {
+  --canvas: #fcfcfd;
+  --panel: #ffffff;
+  --chrome: #ffffff;
+}
+
+/* 2 — Liquid glass. Same palette, but chrome floats over the canvas on frosted
+      panels rather than sitting in solid columns. */
+[data-look="liquid-glass"] {
+  --canvas: #f4f5f8;
+  --panel: rgba(255, 255, 255, 0.78);
+  --glass-panel: rgba(255, 255, 255, 0.72);
+  --glass-blur: saturate(180%) blur(20px);
+  --chrome: rgba(255, 255, 255, 0.82);
+  --line: rgba(30, 35, 41, 0.1);
+  --sh-md: 0 4px 24px rgba(20, 24, 32, 0.1);
+  --sh-lg: 0 16px 48px rgba(20, 24, 32, 0.16);
+}
+
+/* 3 — Arctic blue. Canvas measured at #ECF4FC; the chrome stays white. */
+[data-look="arctic-blue"] {
+  --canvas: #ecf4fc;
+  --canvas-dot: rgba(5, 98, 254, 0.2);
+  --panel: #ffffff;
+  --panel-2: #f5f9ff;
+  --chrome: #ffffff;
+  --line: #dce7f5;
+  --line-soft: #e9f1fb;
+}
+
+/* 4 — Graphite dark studio. Every surface measured from the dark reference. */
+[data-look="graphite-dark"] {
+  --canvas: #141820;
+  --canvas-dot: rgba(255, 255, 255, 0.1);
+  --panel: #1c1c20;
+  --panel-2: #18181c;
+  --panel-hover: #24282c;
+  --panel-active: rgba(5, 98, 254, 0.18);
+  --chrome: #1c2020;
+  --line: #2a2e36;
+  --line-soft: #24272e;
+  --overlay: rgba(6, 8, 12, 0.62);
+
+  --ink: #e9eaee;
+  --ink-2: #969ba5;
+  --ink-3: #6b7079;
+
+  --accent: #3d82ff;
+  --accent-hover: #5b96ff;
+  --accent-tint: rgba(61, 130, 255, 0.16);
+  --accent-line: rgba(61, 130, 255, 0.38);
+  --accent-ink: #9dc0ff;
+
+  --note: #4a4127;
+  --note-ink: #f6e6b8;
+  --success-tint: rgba(20, 177, 141, 0.18);
+  --warning-tint: rgba(253, 159, 10, 0.18);
+  --danger-tint: rgba(250, 57, 40, 0.18);
+  --violet-tint: rgba(132, 106, 252, 0.2);
+
+  --sh-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sh-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --sh-md: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --sh-lg: 0 12px 36px rgba(0, 0, 0, 0.55);
+  --sh-xl: 0 28px 64px rgba(0, 0, 0, 0.6);
+  --sh-focus: 0 0 0 3px rgba(61, 130, 255, 0.28);
+}
+
+/* 5 — Spectrum pro. White ground, but sections carry their own hue wash —
+      the reference showed a dozen pastel tints doing the organising. */
+[data-look="spectrum-pro"] {
+  --canvas: #fcfcfd;
+  --panel: #ffffff;
+  --chrome: #ffffff;
+  --panel-2: #f8f9fd;
+  --spectrum: 1;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: var(--t-13);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  cursor: default;
+  accent-color: var(--accent);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: var(--ink);
+  user-select: text;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: var(--r-xs);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--n-300);
+  border-radius: var(--r-full);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--n-400);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* A label above a group of controls. Used everywhere in the inspector. */
+.eyebrow {
+  font-size: var(--t-11);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

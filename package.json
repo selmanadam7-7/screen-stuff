@@ -1,0 +1,46 @@
+{
+  "name": "screen-drop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "An infinite board that holds every screen you have, and hands it to any call as a window or a webcam.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "app": "tauri dev",
+    "app:build": "tauri build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "check": "tsc --noEmit && cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings",
+    "design:palette": "node scripts/extract-palette.mjs",
+    "design:accents": "node scripts/extract-accents.mjs",
+    "design:exact": "node scripts/extract-exact.mjs",
+    "design:shots": "node scripts/shoot-system.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-clipboard-manager": "^2.2.2",
+    "@tauri-apps/plugin-dialog": "^2.2.1",
+    "@tauri-apps/plugin-global-shortcut": "^2.2.1",
+    "@tauri-apps/plugin-opener": "^2.2.6",
+    "pdfjs-dist": "^4.7.76",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "reicon-react": "^1.2.0",
+    "zustand": "^5.0.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  }
+}

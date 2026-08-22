@@ -1,0 +1,917 @@
+{
+  "product-page-01-workspace-home.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 78.92
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 5.83
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 1.46
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 1.33
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 1.28
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.85
+      },
+      {
+        "hex": "#F0F0F4",
+        "share": 0.67
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.52
+      },
+      {
+        "hex": "#F4F8F8",
+        "share": 0.49
+      },
+      {
+        "hex": "#F0F4F4",
+        "share": 0.32
+      },
+      {
+        "hex": "#F0F4FC",
+        "share": 0.29
+      },
+      {
+        "hex": "#FCFCF8",
+        "share": 0.26
+      },
+      {
+        "hex": "#ECECF0",
+        "share": 0.24
+      },
+      {
+        "hex": "#ECF4FC",
+        "share": 0.22
+      }
+    ]
+  },
+  "product-page-02-new-board-setup.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 77.92
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 5.64
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 2.58
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 1.66
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 0.82
+      },
+      {
+        "hex": "#040404",
+        "share": 0.58
+      },
+      {
+        "hex": "#000000",
+        "share": 0.56
+      },
+      {
+        "hex": "#080808",
+        "share": 0.53
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.5
+      },
+      {
+        "hex": "#ECECEC",
+        "share": 0.35
+      },
+      {
+        "hex": "#20242C",
+        "share": 0.34
+      },
+      {
+        "hex": "#ECECF0",
+        "share": 0.32
+      },
+      {
+        "hex": "#F4F8F8",
+        "share": 0.22
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 0.2
+      }
+    ]
+  },
+  "product-page-03-main-infinite-board.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 70.45
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 7.64
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 3.14
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.79
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 0.63
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.57
+      },
+      {
+        "hex": "#141820",
+        "share": 0.52
+      },
+      {
+        "hex": "#F0F0F4",
+        "share": 0.5
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 0.48
+      },
+      {
+        "hex": "#141C20",
+        "share": 0.32
+      },
+      {
+        "hex": "#F4F8F8",
+        "share": 0.29
+      },
+      {
+        "hex": "#FCFCF8",
+        "share": 0.28
+      },
+      {
+        "hex": "#ECF0FC",
+        "share": 0.23
+      },
+      {
+        "hex": "#F8F8F4",
+        "share": 0.22
+      }
+    ]
+  },
+  "product-page-04-add-screens-display-picker.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#F8F8F8",
+        "share": 44
+      },
+      {
+        "hex": "#FCFCFC",
+        "share": 25.77
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 4.1
+      },
+      {
+        "hex": "#F4F8F8",
+        "share": 3.71
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 3.34
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 1.59
+      },
+      {
+        "hex": "#F0F0F4",
+        "share": 1.37
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 1.17
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.83
+      },
+      {
+        "hex": "#9CA0A4",
+        "share": 0.77
+      },
+      {
+        "hex": "#F0F4F4",
+        "share": 0.7
+      },
+      {
+        "hex": "#989CA4",
+        "share": 0.44
+      },
+      {
+        "hex": "#ECECF0",
+        "share": 0.43
+      },
+      {
+        "hex": "#F0F4F8",
+        "share": 0.36
+      }
+    ]
+  },
+  "product-page-05-live-session-control-room.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 62.55
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 7.09
+      },
+      {
+        "hex": "#1C2028",
+        "share": 5.16
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 4.76
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 1.96
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 1.54
+      },
+      {
+        "hex": "#20242C",
+        "share": 1.29
+      },
+      {
+        "hex": "#F0F0F4",
+        "share": 1.08
+      },
+      {
+        "hex": "#202428",
+        "share": 1.06
+      },
+      {
+        "hex": "#1C2428",
+        "share": 0.98
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.64
+      },
+      {
+        "hex": "#1C2024",
+        "share": 0.49
+      },
+      {
+        "hex": "#F0F4F4",
+        "share": 0.46
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.43
+      }
+    ]
+  },
+  "product-page-06-media-library-imports.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 65.44
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 9.4
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 4.33
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 2.26
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.83
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.8
+      },
+      {
+        "hex": "#1C2024",
+        "share": 0.64
+      },
+      {
+        "hex": "#F0F0F4",
+        "share": 0.47
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 0.44
+      },
+      {
+        "hex": "#ECECEC",
+        "share": 0.42
+      },
+      {
+        "hex": "#F0F4F4",
+        "share": 0.27
+      },
+      {
+        "hex": "#F4F8F8",
+        "share": 0.24
+      },
+      {
+        "hex": "#ECF4FC",
+        "share": 0.23
+      },
+      {
+        "hex": "#0460FC",
+        "share": 0.18
+      }
+    ]
+  },
+  "product-page-07-comments-activity-center.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 82.75
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 4.7
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 2.13
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 2.1
+      },
+      {
+        "hex": "#F0F0F4",
+        "share": 0.69
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 0.66
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.51
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.38
+      },
+      {
+        "hex": "#ECF4FC",
+        "share": 0.32
+      },
+      {
+        "hex": "#FCF8FC",
+        "share": 0.32
+      },
+      {
+        "hex": "#F0F4F4",
+        "share": 0.2
+      },
+      {
+        "hex": "#F4F8F8",
+        "share": 0.18
+      },
+      {
+        "hex": "#F0F4FC",
+        "share": 0.14
+      },
+      {
+        "hex": "#ECECF0",
+        "share": 0.12
+      }
+    ]
+  },
+  "product-page-08-share-permissions.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 40.79
+      },
+      {
+        "hex": "#DCDCE0",
+        "share": 30.81
+      },
+      {
+        "hex": "#D8D8DC",
+        "share": 5.08
+      },
+      {
+        "hex": "#DCDCDC",
+        "share": 2.92
+      },
+      {
+        "hex": "#D4D4D8",
+        "share": 2.31
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 2.13
+      },
+      {
+        "hex": "#DCD8DC",
+        "share": 1.34
+      },
+      {
+        "hex": "#D8D8D8",
+        "share": 1.02
+      },
+      {
+        "hex": "#E0E0E0",
+        "share": 0.76
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 0.74
+      },
+      {
+        "hex": "#D0D0D4",
+        "share": 0.72
+      },
+      {
+        "hex": "#FCF8FC",
+        "share": 0.5
+      },
+      {
+        "hex": "#DCD8E0",
+        "share": 0.36
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.33
+      }
+    ]
+  },
+  "product-page-09-presentation-focus-mode.png": {
+    "size": "1672x941",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 79.36
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 3.76
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 1.4
+      },
+      {
+        "hex": "#202428",
+        "share": 1.38
+      },
+      {
+        "hex": "#20242C",
+        "share": 1.03
+      },
+      {
+        "hex": "#F0F4FC",
+        "share": 0.95
+      },
+      {
+        "hex": "#1C2428",
+        "share": 0.81
+      },
+      {
+        "hex": "#1C2028",
+        "share": 0.8
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 0.67
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.63
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.56
+      },
+      {
+        "hex": "#F4F8FC",
+        "share": 0.5
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 0.47
+      },
+      {
+        "hex": "#F4F4FC",
+        "share": 0.29
+      }
+    ]
+  },
+  "product-page-10-team-settings-admin.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 85.74
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 4.96
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 1.46
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 0.7
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 0.57
+      },
+      {
+        "hex": "#F0F0F4",
+        "share": 0.46
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.35
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.33
+      },
+      {
+        "hex": "#ECF4FC",
+        "share": 0.32
+      },
+      {
+        "hex": "#F4F8F8",
+        "share": 0.2
+      },
+      {
+        "hex": "#F0F4F4",
+        "share": 0.17
+      },
+      {
+        "hex": "#ECECF0",
+        "share": 0.15
+      },
+      {
+        "hex": "#ECF0FC",
+        "share": 0.15
+      },
+      {
+        "hex": "#F0F4FC",
+        "share": 0.14
+      }
+    ]
+  },
+  "ui-look-1-liquid-glass-light.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 70.28
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 6.76
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 4.57
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 1.36
+      },
+      {
+        "hex": "#1C2028",
+        "share": 1.08
+      },
+      {
+        "hex": "#F0F0F4",
+        "share": 0.49
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 0.43
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.43
+      },
+      {
+        "hex": "#1C2428",
+        "share": 0.4
+      },
+      {
+        "hex": "#ECECEC",
+        "share": 0.4
+      },
+      {
+        "hex": "#F4F8F8",
+        "share": 0.37
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 0.31
+      },
+      {
+        "hex": "#F8F8F4",
+        "share": 0.27
+      },
+      {
+        "hex": "#F0F4F4",
+        "share": 0.25
+      }
+    ]
+  },
+  "ui-look-2-graphite-dark-studio.png": {
+    "size": "1672x941",
+    "top": [
+      {
+        "hex": "#1C1C20",
+        "share": 22.72
+      },
+      {
+        "hex": "#1C2020",
+        "share": 12.55
+      },
+      {
+        "hex": "#14181C",
+        "share": 12.05
+      },
+      {
+        "hex": "#181C20",
+        "share": 8.65
+      },
+      {
+        "hex": "#1C2024",
+        "share": 5.49
+      },
+      {
+        "hex": "#141818",
+        "share": 5.45
+      },
+      {
+        "hex": "#18181C",
+        "share": 2.59
+      },
+      {
+        "hex": "#24282C",
+        "share": 2.11
+      },
+      {
+        "hex": "#242428",
+        "share": 1.97
+      },
+      {
+        "hex": "#202024",
+        "share": 1.77
+      },
+      {
+        "hex": "#202428",
+        "share": 1.73
+      },
+      {
+        "hex": "#181C1C",
+        "share": 1.59
+      },
+      {
+        "hex": "#242828",
+        "share": 1.01
+      },
+      {
+        "hex": "#202020",
+        "share": 0.87
+      }
+    ]
+  },
+  "ui-look-3-arctic-blue-canvas.png": {
+    "size": "1568x1003",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 34.08
+      },
+      {
+        "hex": "#ECF4FC",
+        "share": 28.36
+      },
+      {
+        "hex": "#F0F4FC",
+        "share": 8.49
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 3.82
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 2.39
+      },
+      {
+        "hex": "#ECF0FC",
+        "share": 1.24
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 0.86
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 0.8
+      },
+      {
+        "hex": "#F0F0F4",
+        "share": 0.6
+      },
+      {
+        "hex": "#F4F8F8",
+        "share": 0.55
+      },
+      {
+        "hex": "#F4F8FC",
+        "share": 0.49
+      },
+      {
+        "hex": "#F0F4F8",
+        "share": 0.48
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.35
+      },
+      {
+        "hex": "#ECF0F8",
+        "share": 0.34
+      }
+    ]
+  },
+  "ui-look-4-pure-white-studio.png": {
+    "size": "1672x941",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 77.79
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 5.18
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 1.1
+      },
+      {
+        "hex": "#F4F4F8",
+        "share": 1.01
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 0.65
+      },
+      {
+        "hex": "#F0F0F4",
+        "share": 0.45
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.43
+      },
+      {
+        "hex": "#ECECF0",
+        "share": 0.37
+      },
+      {
+        "hex": "#E8E8EC",
+        "share": 0.32
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.32
+      },
+      {
+        "hex": "#E4E4E8",
+        "share": 0.25
+      },
+      {
+        "hex": "#E8F0FC",
+        "share": 0.24
+      },
+      {
+        "hex": "#ECECEC",
+        "share": 0.24
+      },
+      {
+        "hex": "#FCECA4",
+        "share": 0.22
+      }
+    ]
+  },
+  "ui-look-5-spectrum-pro-workspace.png": {
+    "size": "1536x1024",
+    "top": [
+      {
+        "hex": "#FCFCFC",
+        "share": 51.1
+      },
+      {
+        "hex": "#F8F8F8",
+        "share": 6
+      },
+      {
+        "hex": "#F8F8FC",
+        "share": 2.82
+      },
+      {
+        "hex": "#F4F8FC",
+        "share": 2.1
+      },
+      {
+        "hex": "#FCF8F8",
+        "share": 1.63
+      },
+      {
+        "hex": "#F4FCF4",
+        "share": 1.55
+      },
+      {
+        "hex": "#F4F4F4",
+        "share": 1.52
+      },
+      {
+        "hex": "#FCFCF8",
+        "share": 1.15
+      },
+      {
+        "hex": "#FCF4F8",
+        "share": 1.11
+      },
+      {
+        "hex": "#FCF8F0",
+        "share": 1.06
+      },
+      {
+        "hex": "#F8F4FC",
+        "share": 1.02
+      },
+      {
+        "hex": "#141820",
+        "share": 0.88
+      },
+      {
+        "hex": "#F8FCFC",
+        "share": 0.83
+      },
+      {
+        "hex": "#F0F0F0",
+        "share": 0.69
+      }
+    ]
+  }
+}

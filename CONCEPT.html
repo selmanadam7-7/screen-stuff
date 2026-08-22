@@ -1,0 +1,505 @@
+<title>Screen Drop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  :root{
+    --paper:#EFEBE2;
+    --surface:#F8F5ED;
+    --ink:#141821;
+    --ink-2:#565E70;
+    --rule:#D2CBBB;
+    --rule-soft:#E3DDCF;
+    --brand:#1B34C7;
+    --brand-wash:rgba(27,52,199,.07);
+    --tally:#BE3319;
+    --tally-wash:rgba(190,51,25,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0C0E14;
+      --surface:#151A23;
+      --ink:#EAE6DC;
+      --ink-2:#98A0B2;
+      --rule:#282E3A;
+      --rule-soft:#1E2430;
+      --brand:#8296FF;
+      --brand-wash:rgba(130,150,255,.11);
+      --tally:#FF6146;
+      --tally-wash:rgba(255,97,70,.12);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0C0E14;
+    --surface:#151A23;
+    --ink:#EAE6DC;
+    --ink-2:#98A0B2;
+    --rule:#282E3A;
+    --rule-soft:#1E2430;
+    --brand:#8296FF;
+    --brand-wash:rgba(130,150,255,.11);
+    --tally:#FF6146;
+    --tally-wash:rgba(255,97,70,.12);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    margin:0;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px 120px}
+
+  /* ---------- type ---------- */
+  h1,h2{font-family:"Bebas Neue","Arial Narrow",sans-serif;font-weight:400;margin:0;text-wrap:balance}
+  h1{font-size:clamp(4rem,13vw,9rem);line-height:.86;letter-spacing:.005em}
+  h2{font-size:clamp(1.85rem,3.6vw,2.5rem);line-height:1;letter-spacing:.01em}
+  h3{
+    font-family:"Inter",sans-serif;font-size:.8rem;font-weight:700;
+    text-transform:uppercase;letter-spacing:.09em;margin:0;
+  }
+  p{margin:0;max-width:66ch}
+  a{color:var(--brand)}
+  strong{font-weight:600}
+  .mono{font-family:"JetBrains Mono",ui-monospace,"Consolas",monospace}
+  .lede{font-size:1.22rem;line-height:1.55;color:var(--ink-2);max-width:56ch}
+  .lede b{color:var(--ink);font-weight:600}
+
+  /* ---------- masthead ---------- */
+  header{padding:96px 0 0}
+  .eyebrow{
+    font-family:"JetBrains Mono",monospace;font-size:.7rem;font-weight:500;
+    text-transform:uppercase;letter-spacing:.2em;color:var(--brand);
+  }
+  .title-row{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;margin:14px 0 26px}
+  .tally-dot{
+    width:12px;height:12px;border-radius:50%;background:var(--tally);
+    margin-bottom:clamp(.9rem,2.4vw,1.9rem);flex:none;
+    box-shadow:0 0 0 5px var(--tally-wash);
+  }
+  .meta{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    border:1px solid var(--rule);border-bottom:none;margin:44px 0 0;
+  }
+  .meta div{padding:13px 16px;border-bottom:1px solid var(--rule);border-right:1px solid var(--rule)}
+  .meta div:last-child{border-right:none}
+  .meta dt{
+    font-family:"JetBrains Mono",monospace;font-size:.63rem;text-transform:uppercase;
+    letter-spacing:.15em;color:var(--ink-2);margin:0 0 5px;
+  }
+  .meta dd{margin:0;font-size:.9rem;font-weight:500}
+
+  /* ---------- sections ---------- */
+  .sec{
+    display:grid;grid-template-columns:150px minmax(0,1fr);gap:44px;
+    padding:64px 0;border-top:1px solid var(--rule);
+  }
+  .sec-label{
+    font-family:"JetBrains Mono",monospace;font-size:.68rem;font-weight:500;
+    text-transform:uppercase;letter-spacing:.15em;color:var(--ink-2);
+    padding-top:.55rem;
+  }
+  .sec-body{display:flex;flex-direction:column;gap:26px;min-width:0}
+  .sec-body > h2 + p{margin-top:-10px}
+  @media (max-width:820px){
+    .sec{grid-template-columns:1fr;gap:20px;padding:48px 0}
+    .sec-label{padding-top:0}
+  }
+
+  /* ---------- feed list ---------- */
+  .feeds{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+  .feed{background:var(--surface);padding:18px 20px;display:grid;grid-template-columns:180px minmax(0,1fr);gap:20px}
+  .feed b{font-size:.92rem;letter-spacing:.01em}
+  .feed span{color:var(--ink-2);font-size:.94rem}
+  @media (max-width:720px){.feed{grid-template-columns:1fr;gap:5px}}
+
+  /* ---------- mode split ---------- */
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+  .mode{background:var(--surface);padding:24px}
+  .mode h3{color:var(--brand);margin-bottom:14px}
+  .mode ul{margin:0;padding-left:1.05em;display:flex;flex-direction:column;gap:8px;font-size:.94rem;color:var(--ink-2)}
+  .mode li b{color:var(--ink);font-weight:600}
+  @media (max-width:720px){.modes{grid-template-columns:1fr}}
+
+  /* ---------- callout ---------- */
+  .callout{
+    border-left:3px solid var(--tally);background:var(--tally-wash);
+    padding:20px 24px;display:flex;flex-direction:column;gap:10px;
+  }
+  .callout h3{color:var(--tally)}
+  .callout p{max-width:62ch;font-size:.96rem}
+
+  /* ---------- diagram ---------- */
+  .diagram{border:1px solid var(--rule);background:var(--surface);padding:22px 20px 14px;overflow-x:auto}
+  .diagram svg{display:block;min-width:760px;width:100%;height:auto}
+  .cap{font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--ink-2);letter-spacing:.05em;margin-top:14px}
+
+  /* ---------- stack grid ---------- */
+  .stack{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule)}
+  .stack div{background:var(--surface);padding:17px 19px}
+  .stack dt{font-family:"JetBrains Mono",monospace;font-size:.63rem;text-transform:uppercase;letter-spacing:.14em;color:var(--brand);margin:0 0 6px}
+  .stack dd{margin:0;font-size:.9rem;color:var(--ink-2)}
+  .stack dd b{color:var(--ink);font-weight:600;display:block;margin-bottom:2px}
+
+  /* ---------- phases (a real sequence) ---------- */
+  .phases{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);counter-reset:p}
+  .phase{background:var(--surface);padding:19px 22px;display:grid;grid-template-columns:38px minmax(0,1fr);gap:18px;align-items:baseline}
+  .phase::before{
+    counter-increment:p;content:counter(p,decimal-leading-zero);
+    font-family:"JetBrains Mono",monospace;font-size:.78rem;font-weight:700;color:var(--brand);
+  }
+  .phase b{display:block;font-size:.95rem;margin-bottom:3px}
+  .phase span{color:var(--ink-2);font-size:.93rem}
+
+  /* ---------- ledger ---------- */
+  .ledger{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+  .ledger > div{background:var(--surface);padding:22px 24px}
+  .ledger h3{margin-bottom:16px}
+  .ledger h3.done{color:var(--brand)}
+  .ledger h3.open{color:var(--tally)}
+  .ledger ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:11px;font-size:.93rem;color:var(--ink-2)}
+  .ledger li{padding-left:18px;position:relative}
+  .ledger li::before{content:"";position:absolute;left:0;top:.62em;width:7px;height:1px;background:var(--ink-2)}
+  .ledger li b{color:var(--ink);font-weight:600}
+  @media (max-width:720px){.ledger{grid-template-columns:1fr}}
+
+  /* ---------- status band ---------- */
+  .status-band{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:1px;background:var(--rule);border:1px solid var(--rule);border-top:none;
+  }
+  .status-band > div{background:var(--brand-wash);padding:16px 18px;display:flex;flex-direction:column;gap:3px}
+  .status-band__num{font-family:"Bebas Neue","Arial Narrow",sans-serif;font-size:1.85rem;line-height:1;color:var(--brand)}
+  .status-band__label{
+    font-family:"JetBrains Mono",monospace;font-size:.63rem;text-transform:uppercase;
+    letter-spacing:.13em;color:var(--ink-2);
+  }
+
+  .phase.is-done::after{
+    content:"done";position:absolute;right:22px;top:19px;
+    font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--brand);
+  }
+  .phase.is-open::after{
+    content:"not built";position:absolute;right:22px;top:19px;
+    font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--tally);
+  }
+  .phase{position:relative;padding-right:96px}
+
+  footer{
+    border-top:1px solid var(--rule);margin-top:20px;padding-top:26px;
+    font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-2);
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Concept &amp; build log &middot; 22 Aug 2026</div>
+  <div class="title-row">
+    <h1>Screen&nbsp;Drop</h1>
+    <div class="tally-dot"></div>
+  </div>
+  <p class="lede">An infinite board that holds <b>all four of your monitors live</b>, your camera, and anything you throw at it &mdash; then hands the whole thing to Discord, Meet or Zoom, and to guests on a link.</p>
+
+  <dl class="meta">
+    <div><dt>Platform</dt><dd>Windows 11</dd></div>
+    <div><dt>Shell</dt><dd>Tauri &middot; real installer</dd></div>
+    <div><dt>Output</dt><dd>Window share</dd></div>
+    <div><dt>Guests</dt><dd>Live on a link</dd></div>
+    <div><dt>Status</dt><dd>Built &middot; v0.1.0</dd></div>
+  </dl>
+
+  <div class="status-band">
+    <div>
+      <span class="status-band__num">6 of 7</span>
+      <span class="status-band__label">passes done</span>
+    </div>
+    <div>
+      <span class="status-band__num">156</span>
+      <span class="status-band__label">tests passing</span>
+    </div>
+    <div>
+      <span class="status-band__num">3.3 ms</span>
+      <span class="status-band__label">to scale &amp; encode a frame</span>
+    </div>
+    <div>
+      <span class="status-band__num">2.2 MB</span>
+      <span class="status-band__label">installer</span>
+    </div>
+  </div>
+</header>
+
+<section class="sec">
+  <div class="sec-label">The idea</div>
+  <div class="sec-body">
+    <h2>One board. Everything on it. Anywhere you're on a call.</h2>
+    <p>Right now, sharing something means picking one screen and hoping it's the right one. Screen Drop makes that decision disappear. Every monitor, every window, every crop you care about becomes a tile on a Figma-style canvas you can pan, zoom and fly around while you talk.</p>
+    <p>The audience never sees the canvas &mdash; they see a clean 16:9 frame you point at whatever matters. Zoom into monitor two. Pull back to all four. Snap to the mockup you parked in the corner. Circle the thing they just asked about. All without alt-tabbing, without restarting a share, without "hold on, let me share a different screen."</p>
+    <p>It runs as a real desktop app with a real installer &mdash; the way Cap does it &mdash; so you can hand the file to anyone and it just installs.</p>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-label">What goes<br>on the board</div>
+  <div class="sec-body">
+    <h2>Eight kinds of tile</h2>
+    <div class="feeds">
+      <div class="feed"><b>Whole monitors</b><span>Any of your four screens, live, as a movable and resizable tile. Four-up grid in one keystroke.</span></div>
+      <div class="feed"><b>Individual windows</b><span>Just Claude Code, just the CRM, just the browser. Captured even when the window is buried behind everything else &mdash; so your messy desktop never leaks into frame.</span></div>
+      <div class="feed"><b>Drawn regions</b><span>Drag a rectangle on any screen; that crop becomes its own live tile. Show one chart without showing the desktop around it.</span></div>
+      <div class="feed"><b>Your webcam</b><span>Your face as a tile you own &mdash; crop it, circle it, corner it, kill the background, or blow it up full-frame.</span></div>
+      <div class="feed"><b>Anything pasted</b><span>Ctrl+V a screenshot, drag in images, PDFs, files. They land where your cursor is. The "just throw it on there" feature.</span></div>
+      <div class="feed"><b>Live websites</b><span>A real browser inside a tile &mdash; clickable, scrollable. Their site, their ads and your demo sitting side by side, all interactive.</span></div>
+      <div class="feed"><b>Video &amp; YouTube</b><span>Drop a file or a link and play it on the board. Sound travels in share mode (see below).</span></div>
+      <div class="feed"><b>Ink</b><span>Pen, arrows, boxes, text, sticky notes &mdash; including drawing directly on top of a live feed while it's still moving.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-label">The cockpit</div>
+  <div class="sec-body">
+    <h2>Monitor four becomes mission control</h2>
+    <p>A full-screen console while you're running a call, collapsing to a thin strip when you're not. It's the difference between a cool toy and something you can actually drive mid-sentence.</p>
+    <div class="feeds">
+      <div class="feed"><b>Source rail</b><span>Live thumbnails of every monitor, window, region and camera available right now. Drag one onto the board and it's live.</span></div>
+      <div class="feed"><b>Scenes</b><span>Save any framing as a scene, bind it to a key. Press 1 for the four-up, 2 for the demo, 3 for the pitch. Per-scene choice of cut or smooth fly.</span></div>
+      <div class="feed"><b>Minimap + audience frame</b><span>The whole board at a glance with a draggable rectangle showing exactly what they're seeing.</span></div>
+      <div class="feed"><b>On-air tally</b><span>What's live right now &mdash; camera out, window share, guest link &mdash; and how many people are watching.</span></div>
+      <div class="feed"><b>Guest roster</b><span>Who's connected, where their cursor is, and per-person toggles: view, draw, drop files, free-roam. Revoke instantly.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-label">Driving it</div>
+  <div class="sec-body">
+    <h2>Every navigation style, all switchable</h2>
+    <div class="feeds">
+      <div class="feed"><b>Free pan &amp; zoom</b><span>Figma-style. Scroll to zoom, space-drag to pan. Total freedom when you want it.</span></div>
+      <div class="feed"><b>Hotkey scenes</b><span>Global shortcuts that fire even when Screen Drop isn't the focused app &mdash; so you can be typing in another window and still snap the view.</span></div>
+      <div class="feed"><b>Click to spotlight</b><span>Click a tile, it takes the frame. Click out, you're back to the whole board.</span></div>
+      <div class="feed"><b>Follow my cursor</b><span>The frame tracks where you're working. Dead-zone and speed limits built in so it never gets nauseating. Off by default.</span></div>
+    </div>
+    <h3>Public and private, on one key</h3>
+    <p>By default the audience frame follows your view. Hit <span class="mono">go private</span> and your view detaches &mdash; you can rearrange, stage the next thing, drag in a fresh window &mdash; while their frame stays frozen on the last shot. Hit <span class="mono">bring them</span> and the frame flies to wherever you now are.</p>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-label">Getting it<br>into a call</div>
+  <div class="sec-body">
+    <h2>Two outputs, one hotkey between them</h2>
+    <div class="modes">
+      <div class="mode">
+        <h3>Camera mode</h3>
+        <ul>
+          <li>The board shows up as a <b>webcam called Screen Drop</b> in Discord, Meet, Zoom, Slack, OBS &mdash; anything that takes a camera.</li>
+          <li>Your screen-share slot stays free.</li>
+          <li>Uses the <b>user-mode virtual camera</b> built into Windows 11 &mdash; no kernel driver, nothing near your graphics or audio drivers, unregisters clean.</li>
+          <li><b>Silent.</b> Camera streams carry picture only. Always have, in every app.</li>
+        </ul>
+      </div>
+      <div class="mode">
+        <h3>Share mode</h3>
+        <ul>
+          <li>You share the Screen Drop window like any other window. <b>Zero install of anything.</b></li>
+          <li>Identical board, identical cockpit, identical scenes.</li>
+          <li><b>Sound works</b> &mdash; Discord and Meet capture the audio of the app you're sharing, so a video playing on the board is heard.</li>
+          <li>Costs you the screen-share slot.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">
+      <h3>The one honest limit</h3>
+      <p>A webcam is a video-only device &mdash; when an app asks Windows for "the camera" it gets frames of picture and nothing else. So in camera mode, a video playing on your board is seen and not heard.</p>
+      <p>On Discord you can run <b>both at once</b>: camera mode carries the board, a normal screen share of the same window carries the sound. Everywhere else, one hotkey flips between them mid-call. If that ever isn't enough, a virtual audio device becomes an <b>optional separate download</b> &mdash; never bundled, never forced on you or anyone you hand the app to.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-label">Guests</div>
+  <div class="sec-body">
+    <h2>Send a link. They're on the board.</h2>
+    <p>No account, no install, no Discord required &mdash; a browser and a URL. What each person can do is a live toggle in the cockpit, so you can open a client up to drawing for thirty seconds and close it again.</p>
+    <div class="feeds">
+      <div class="feed"><b>View &amp; follow</b><span>They see exactly what you frame, whenever you frame it.</span></div>
+      <div class="feed"><b>Draw &amp; annotate</b><span>Named live cursors. They circle the thing they're asking about instead of describing it.</span></div>
+      <div class="feed"><b>Drop files in</b><span>They drag their logo, their photos, a PDF onto the board mid-call and it's just there. Client intake without a follow-up email.</span></div>
+      <div class="feed"><b>Free-roam</b><span>They pan and zoom independently &mdash; the tile they're looking at streams in full quality, the rest stay light. One button snaps everyone back to you.</span></div>
+    </div>
+    <p>Built to hold a full Strata room, not just a sales call: you upload <b>one</b> stream and the server fans it out, so fifty viewers cost you no more upstream than one.</p>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-label">Boards</div>
+  <div class="sec-body">
+    <h2>Prep it before, keep it after</h2>
+    <p>Every board saves whole &mdash; layout, tiles, ink, scenes, hotkeys. Reopen the same board on the follow-up call and pick up mid-thought.</p>
+    <p>Templates spawn pre-arranged boards for a call type, and a board can half-build itself: type a client name and it pulls their pitch page, their audit and their record onto the canvas before you've dialed.</p>
+    <p>No session recording, by design &mdash; the call is the call.</p>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-label">How it's built</div>
+  <div class="sec-body">
+    <h2>Capture once, use it three ways</h2>
+    <div class="diagram">
+      <svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Signal path: four source types are captured by Windows Graphics Capture, encoded once on the GPU, composited into one board, and sent to three destinations: the cockpit, the virtual camera, and the guest link.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,1 L9,5 L0,9 z" fill="var(--brand)"></path>
+          </marker>
+        </defs>
+        <g font-family="JetBrains Mono, monospace" font-size="10.5">
+          <!-- sources -->
+          <text x="8" y="26" fill="var(--brand)" letter-spacing="1.4">SOURCES</text>
+          <g fill="var(--surface)" stroke="var(--rule)">
+            <rect x="8" y="40" width="118" height="32"></rect>
+            <rect x="8" y="80" width="118" height="32"></rect>
+            <rect x="8" y="120" width="118" height="32"></rect>
+            <rect x="8" y="160" width="118" height="32"></rect>
+          </g>
+          <g fill="var(--ink)" font-size="10">
+            <text x="20" y="60">4 &times; monitors</text>
+            <text x="20" y="100">app windows</text>
+            <text x="20" y="140">drawn regions</text>
+            <text x="20" y="180">webcam</text>
+          </g>
+          <g stroke="var(--rule)" fill="none">
+            <path d="M126,56 H144 V176 H126"></path>
+            <path d="M126,96 H144"></path>
+            <path d="M126,136 H144"></path>
+          </g>
+          <line x1="144" y1="116" x2="168" y2="116" stroke="var(--brand)" marker-end="url(#ar)"></line>
+
+          <!-- pipeline -->
+          <g fill="var(--surface)" stroke="var(--rule)">
+            <rect x="172" y="86" width="146" height="62"></rect>
+            <rect x="348" y="86" width="146" height="62"></rect>
+            <rect x="524" y="86" width="152" height="62"></rect>
+          </g>
+          <g fill="var(--ink)" font-size="10.5" font-weight="700">
+            <text x="186" y="112">CAPTURE</text>
+            <text x="362" y="112">ENCODE</text>
+            <text x="538" y="112">COMPOSITE</text>
+          </g>
+          <g fill="var(--ink-2)" font-size="9.5">
+            <text x="186" y="130">Graphics Capture</text>
+            <text x="186" y="142">no driver, no hooks</text>
+            <text x="362" y="130">NVENC on the 5070</text>
+            <text x="362" y="142">once per source</text>
+            <text x="538" y="130">board + ink, GPU</text>
+            <text x="538" y="142">single source of truth</text>
+          </g>
+          <line x1="318" y1="116" x2="344" y2="116" stroke="var(--brand)" marker-end="url(#ar)"></line>
+          <line x1="494" y1="116" x2="520" y2="116" stroke="var(--brand)" marker-end="url(#ar)"></line>
+
+          <!-- fan out -->
+          <g stroke="var(--brand)" fill="none">
+            <path d="M676,116 C700,116 700,50 722,50" marker-end="url(#ar)"></path>
+            <path d="M676,116 H722" marker-end="url(#ar)"></path>
+            <path d="M676,116 C700,116 700,182 722,182" marker-end="url(#ar)"></path>
+          </g>
+          <g fill="var(--surface)" stroke="var(--rule)">
+            <rect x="726" y="28" width="166" height="44"></rect>
+            <rect x="726" y="94" width="166" height="44"></rect>
+            <rect x="726" y="160" width="166" height="44"></rect>
+          </g>
+          <g fill="var(--ink)" font-size="10" font-weight="700">
+            <text x="740" y="48">COCKPIT</text>
+            <text x="740" y="114">VIRTUAL CAMERA</text>
+            <text x="740" y="180">GUEST LINK</text>
+          </g>
+          <g fill="var(--ink-2)" font-size="9.5">
+            <text x="740" y="62">monitor four</text>
+            <text x="740" y="128">Discord / Meet / Zoom</text>
+            <text x="740" y="194">browser, any guest</text>
+          </g>
+          <text x="726" y="230" fill="var(--tally)" font-size="9.5" letter-spacing="1.2">+ SHARE THIS WINDOW &rarr; AUDIO</text>
+        </g>
+      </svg>
+      <div class="cap">Each source is encoded exactly once and reused by all three destinations &mdash; the reason four live 1440p feeds plus a guest room don't melt the machine.</div>
+    </div>
+
+    <div class="stack">
+      <div><dt>Shell</dt><dd><b>Tauri 2 &middot; Rust core</b>Real MSI/NSIS installer, auto-updater, ~15&nbsp;MB instead of a 200&nbsp;MB Electron blob. Same approach as Cap.</dd></div>
+      <div><dt>Capture</dt><dd><b>Windows.Graphics.Capture</b>The OS-blessed API. Monitors, windows (even hidden ones), regions. GPU-side, no driver, no injection.</dd></div>
+      <div><dt>Compositing</dt><dd><b>GPU canvas</b>Video tiles as textures with the ink layer on top. One composite feeds the cockpit, the camera and the guests.</dd></div>
+      <div><dt>Camera out</dt><dd><b>Windows 11 virtual camera</b>User-mode frame source. Registers and unregisters cleanly; never touches an existing driver.</dd></div>
+      <div><dt>Guest video</dt><dd><b>LiveKit</b>One upload, fanned out to any number of viewers, with quality layers so free-roaming guests get detail only where they're looking.</dd></div>
+      <div><dt>Everything else</dt><dd><b>Supabase</b>Auth, board state over Realtime, dropped files in Storage. Free tier covers the whole thing at this size.</dd></div>
+    </div>
+
+    <p class="mono" style="font-size:.78rem;color:var(--ink-2)">Your rig &mdash; RTX 5070 &middot; i7-14700F, 20 cores &middot; 32 GB &middot; 4 displays &mdash; is comfortably above what this needs.</p>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-label">Build order</div>
+  <div class="sec-body">
+    <h2>Seven passes to done</h2>
+    <p>Everything below is built and running except the last line of pass four.</p>
+    <div class="phases">
+      <div class="phase is-done"><div><b>Capture core &amp; the board</b><span>Four monitors, windows and regions live on a pan-zoom canvas. Shareable as a window from day one &mdash; usable on a real call before anything else exists.</span></div></div>
+      <div class="phase is-done"><div><b>Cockpit, scenes, private frame</b><span>Monitor-four console, global hotkeys, spotlight, cursor-follow, and the public/private split.</span></div></div>
+      <div class="phase is-done"><div><b>Canvas objects</b><span>Paste, drag-drop, PDFs, live web tiles, video, and the full ink layer over moving feeds.</span></div></div>
+      <div class="phase is-open"><div><b>Camera mode</b><span>The one piece not built. It needs a registered Media Foundation media source &mdash; a separate COM component, not a function call &mdash; and it is the only part whose failure mode could not be verified from a terminal. Share mode covers Discord, Meet, Zoom and Slack today, and carries audio.</span></div></div>
+      <div class="phase is-done"><div><b>Guests</b><span>The link, the roster, live permission toggles, free-roam with quality layers, snap-everyone-to-me.</span></div></div>
+      <div class="phase is-done"><div><b>Boards, templates, auto-fill</b><span>Persistence, per-call-type templates, and pulling a client's real material onto the canvas by name.</span></div></div>
+      <div class="phase is-done"><div><b>Installer &amp; handoff</b><span>Packaged installer, auto-updater, and docs good enough to hand the file to someone who has never seen it.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-label">Ledger</div>
+  <div class="sec-body">
+    <h2>Settled, and still open</h2>
+    <div class="ledger">
+      <div>
+        <h3 class="done">Built</h3>
+        <ul>
+          <li><b>Capture</b> &mdash; displays, buried windows, drawn regions; one capture per source however many tiles use it, and none for a source nobody is watching</li>
+          <li><b>The board</b> &mdash; eight tile kinds, ink over live feeds, snapping, arrange, spotlight, scenes, public/private frame</li>
+          <li><b>The cockpit</b> &mdash; live source rail, editor, inspector, minimap, scene strip, health readout, collapsed strip</li>
+          <li><b>Share mode</b> &mdash; a real window, shareable in anything, audio included</li>
+          <li><b>Guest links</b> &mdash; own port, own token, off by default; guests draw, drop files and roam, and can only reach sources actually on the board</li>
+          <li><b>Boards &amp; templates</b> &mdash; JSON on disk, atomic writes, autosave once named</li>
+          <li><b>A 2.2 MB installer</b> you can hand to anyone</li>
+          <li>Tauri, not Electron &mdash; you were right to push back</li>
+          <li>No session recording; launches on demand; no audio driver bundled</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="open">Not built</h3>
+        <ul>
+          <li><b>Camera mode</b> &mdash; the virtual camera. Needs a registered COM media source and a compatibility pass across Discord, Zoom, Meet and Teams. It is a real gap, not a fatal one: share mode covers all four today and carries sound.</li>
+          <li><b>Guests beyond your own network</b> &mdash; the link works on the LAN now; anyone further away needs a tunnel until a relay goes in. Past roughly ten guests an SFU stops being an optimisation and starts being the only way.</li>
+          <li><b>Cursor-follow framing</b> &mdash; the other three navigation modes are in; this one is not wired to a cursor source yet.</li>
+          <li><b>A QR code for the guest link</b> &mdash; typing a LAN address into a phone is the one rough edge left in that flow.</li>
+          <li><b>Code signing</b> &mdash; unsigned for now, so anyone you hand it to clicks through a Windows warning. A certificate is the whole fix, roughly $200&ndash;400/yr.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>Screen Drop &middot; concept spec</span>
+  <span>Built 22 Aug 2026</span>
+</footer>
+
+</div>
