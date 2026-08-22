@@ -23,7 +23,7 @@ export function Brand({
       className={className}
       width={size}
       height={size}
-      viewBox="0 0 3987.69 3686.84"
+      viewBox="2215.3 1825.8 1781.7 1870.3"
       fill="currentColor"
       role={title ? "img" : "presentation"}
       aria-hidden={title ? undefined : true}

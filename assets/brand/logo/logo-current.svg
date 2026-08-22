@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3987.69 3686.84">
-  <!-- Draws in whatever colour it inherits, so one file serves every look. -->
+<!--
+  The viewBox is cropped to the artwork.
+
+  The export from Illustrator kept the mark in the bottom-right corner of a
+  canvas nearly five times its area, so anything that sized this file by its
+  viewBox drew the mark at about 45% of the space it was given and left the
+  rest blank. At 18px in a title bar that is unreadable. Measured with
+  getBBox: the art runs 2224.6,1835.1 to 3987.7,3686.8.
+-->
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="2215.3 1825.8 1781.7 1870.3">
   <defs>
     <style>
       .cls-1 {

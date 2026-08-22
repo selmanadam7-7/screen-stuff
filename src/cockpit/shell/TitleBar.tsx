@@ -65,7 +65,7 @@ export function TitleBar({
   return (
     <header className="titlebar" data-tauri-drag-region>
       <div className="titlebar__left">
-        <Brand size={18} className="brand" />
+        <Brand size={26} className="brand" title="Screen Stuff" />
         <MenuButton
           tone="ghost"
           size="sm"
