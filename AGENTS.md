@@ -108,6 +108,14 @@ Three traps that will cost you an afternoon if you rediscover them:
   min-content width, and a text input reports about twenty characters. Use
   `minmax(0, 1fr)`. Two shipped layout bugs came from exactly this.
 
+**The brand is a folder, not a drawing.** `assets/brand` holds the icon, the
+mark and the illustrations, and two scripts copy them into place:
+`scripts/make-icons.mjs` (Tauri bundle icons and favicons) and
+`scripts/make-brand-component.mjs` (`logo-current.svg` into `src/ui/Brand.tsx`).
+Neither redraws anything. If an icon needs to change, change the file in
+`assets/brand` and re-run the script — never hand-draw one, and never edit
+`src/ui/Brand.tsx`, which is generated.
+
 There are Playwright harnesses that drive the real app rather than a mock --
 `scripts/check-stage.mjs` and `scripts/check-layout.mjs`. Run them after
 touching the canvas or the shell. They need a dev server on port 4483.

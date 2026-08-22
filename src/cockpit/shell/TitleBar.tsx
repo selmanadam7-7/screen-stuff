@@ -22,6 +22,7 @@ import {
   ShareIcon,
 } from "../../ui/icons";
 import { Avatar, AvatarStack, Badge, Button, IconButton, MenuButton } from "../../ui/primitives";
+import { Brand } from "../../ui/Brand";
 import { runningInTauri } from "../../core/bus";
 import { useActions, useStore } from "../store";
 
@@ -64,7 +65,7 @@ export function TitleBar({
   return (
     <header className="titlebar" data-tauri-drag-region>
       <div className="titlebar__left">
-        <span className="brand" aria-hidden />
+        <Brand size={18} className="brand" />
         <MenuButton
           tone="ghost"
           size="sm"

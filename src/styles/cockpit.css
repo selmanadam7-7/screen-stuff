@@ -51,25 +51,10 @@
 }
 
 /* The app mark: three screens, the front one lit — same idea as the icon. */
+/* The mark itself, inheriting the accent so it is right in every look. */
 .brand {
-  position: relative;
-  width: 20px;
-  height: 15px;
   flex: none;
-}
-.brand::before,
-.brand::after {
-  content: "";
-  position: absolute;
-  border-radius: 2px;
-}
-.brand::before {
-  inset: 0 5px 4px 0;
-  border: 1.5px solid var(--ink-3);
-}
-.brand::after {
-  inset: 4px 0 0 5px;
-  background: var(--accent);
+  color: var(--accent);
 }
 
 .titlebar__dirty {

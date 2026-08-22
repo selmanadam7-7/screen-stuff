@@ -1,12 +1,45 @@
-# Screen Stuff
+<p align="center">
+  <img src="assets/brand/icon/screen-stuff-256.png" width="132" alt="Screen Stuff" />
+</p>
 
-An infinite board that holds every screen you have, and hands it to any call.
+<h1 align="center">Screen Stuff</h1>
+
+<p align="center">
+  <b>An infinite board that holds every screen you have,<br />
+  and hands one rectangle of it to any call.</b>
+</p>
+
+<p align="center">
+  Windows 10 1809+ &middot; 64-bit &middot; Tauri&nbsp;2 + Rust &middot; 3&nbsp;MB installer
+</p>
+
+---
 
 Every monitor, every window, every crop you care about becomes a live tile on a
 Figma-style canvas. One rectangle on that canvas — the **stage** — is what the
 call sees. Everything else is yours: you pan, zoom and rummage around your own
 board while you talk, and nobody follows. No alt-tabbing, no restarting a share,
 no "hold on, let me share a different screen".
+
+<table>
+<tr>
+<td width="33%" align="center">
+  <img src="assets/brand/illustrations/screen-wall.png" height="112" alt="" /><br />
+  <b>Everything, at once</b><br />
+  <sub>Four monitors, buried windows, a crop of one corner, your camera — all live tiles on one canvas.</sub>
+</td>
+<td width="33%" align="center">
+  <img src="assets/brand/illustrations/board-glyph.png" height="112" alt="" /><br />
+  <b>One rectangle is shared</b><br />
+  <sub>The stage is what they see. The rest of the board is your private workspace, mid-call.</sub>
+</td>
+<td width="33%" align="center">
+  <img src="assets/brand/illustrations/device-stack.png" height="112" alt="" /><br />
+  <b>Any app takes it</b><br />
+  <sub>The board is an ordinary window. Discord, Meet, Zoom and Teams all share it, with audio.</sub>
+</td>
+</tr>
+</table>
 
 ---
 
@@ -307,6 +340,26 @@ Meet, Zoom and Slack today and carries audio.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for exactly what it needs, what you lose
 without it, and the smaller gaps.
+
+## Brand
+
+Everything visual lives in [`assets/brand`](assets/brand), and the app reads it
+from there rather than keeping its own copy:
+
+| | |
+| --- | --- |
+| [`icon/`](assets/brand/icon) | The face of Screen Stuff. `scripts/make-icons.mjs` copies it into the Tauri bundle and the web pages, so the taskbar, the installer and every browser tab show the same one. |
+| [`logo/`](assets/brand/logo) | The mark, in blue, white and black, plus `logo-current.svg` which draws in `currentColor`. `scripts/make-brand-component.mjs` turns that one into `src/ui/Brand.tsx`, which is the mark you see in the title bar and on the guest page. |
+| [`illustrations/`](assets/brand/illustrations) | The drawings above. |
+
+Both scripts only ever copy or transcribe. Nothing redraws the icon, because a
+redrawn icon is one that drifts away from the brand folder without anyone
+noticing.
+
+```bash
+node scripts/make-icons.mjs            # brand -> app icons and favicons
+node scripts/make-brand-component.mjs  # logo SVG -> the React mark
+```
 
 ## Tests
 
