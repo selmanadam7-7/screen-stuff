@@ -57,6 +57,57 @@ fn safe_id(id: &str) -> Result<&str> {
     }
 }
 
+/// The directory everything of ours lives in: boards, settings, the tunnel helper.
+///
+/// The app was called Screen Drop before it was called Screen Stuff, and a
+/// rename that silently abandons your saved boards is not a rename, it is data
+/// loss with a new logo.
+pub fn app_data_dir() -> Result<PathBuf> {
+    let base = dirs::data_dir().ok_or_else(|| anyhow!("no application data directory"))?;
+    let current = base.join(DATA_DIR_NAME);
+    std::fs::create_dir_all(&current)
+        .with_context(|| format!("could not create {}", current.display()))?;
+    adopt_previous_data(&base.join(PREVIOUS_DATA_DIR_NAME), &current);
+    Ok(current)
+}
+
+const DATA_DIR_NAME: &str = "screen-stuff";
+const PREVIOUS_DATA_DIR_NAME: &str = "screen-drop";
+
+/// Move anything from the old directory that the new one does not already have.
+///
+/// Entry by entry rather than renaming the whole directory, because the new one
+/// may already exist and be nearly empty — created by a first launch that got as
+/// far as writing one settings file. Renaming would fail there and the boards
+/// would be stranded. Never overwrites: whatever is under the current name is
+/// newer by definition, and a migration that clobbers live data is worse than
+/// one that does nothing.
+fn adopt_previous_data(previous: &Path, current: &Path) {
+    if !previous.is_dir() || previous == current {
+        return;
+    }
+    let entries = match std::fs::read_dir(previous) {
+        Ok(entries) => entries,
+        Err(err) => {
+            tracing::warn!("could not read {}: {err}", previous.display());
+            return;
+        }
+    };
+    for entry in entries.flatten() {
+        let target = current.join(entry.file_name());
+        if target.exists() {
+            continue;
+        }
+        match std::fs::rename(entry.path(), &target) {
+            Ok(()) => tracing::info!("kept {} from the previous name", target.display()),
+            // Not fatal. A missing board beats refusing to start, and the
+            // original is still sitting where it was.
+            Err(err) => tracing::warn!("could not move {}: {err}", entry.path().display()),
+        }
+    }
+}
+
+
 impl Store {
     pub fn new(root: impl Into<PathBuf>) -> Result<Self> {
         let root = root.into();
@@ -65,10 +116,9 @@ impl Store {
         Ok(Self { root })
     }
 
-    /// `%APPDATA%\screen-drop` on Windows.
+    /// `%APPDATA%\screen-stuff` on Windows.
     pub fn default_location() -> Result<Self> {
-        let base = dirs::data_dir().ok_or_else(|| anyhow!("no application data directory"))?;
-        Self::new(base.join("screen-drop"))
+        Self::new(app_data_dir()?)
     }
 
     pub fn root(&self) -> &Path {
@@ -159,6 +209,65 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn data_from_the_previous_name_is_adopted() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let previous = temp.path().join("screen-drop");
+        let current = temp.path().join("screen-stuff");
+        std::fs::create_dir_all(previous.join("boards")).unwrap();
+        std::fs::write(previous.join("boards").join("a.json"), b"{}").unwrap();
+        std::fs::write(previous.join("settings.json"), b"{\"look\":\"graphite-dark\"}").unwrap();
+        std::fs::create_dir_all(&current).unwrap();
+
+        adopt_previous_data(&previous, &current);
+
+        assert!(current.join("boards").join("a.json").is_file(), "the boards came across");
+        assert!(current.join("settings.json").is_file(), "so did the settings");
+    }
+
+    #[test]
+    fn migration_never_overwrites_what_is_already_there() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let previous = temp.path().join("screen-drop");
+        let current = temp.path().join("screen-stuff");
+        std::fs::create_dir_all(&previous).unwrap();
+        std::fs::create_dir_all(&current).unwrap();
+        std::fs::write(previous.join("settings.json"), b"old").unwrap();
+        std::fs::write(current.join("settings.json"), b"new").unwrap();
+
+        adopt_previous_data(&previous, &current);
+
+        // Whatever is under the current name is newer by definition.
+        assert_eq!(std::fs::read(current.join("settings.json")).unwrap(), b"new");
+    }
+
+    #[test]
+    fn a_partly_created_new_directory_still_gets_the_old_boards() {
+        // The case a whole-directory rename cannot handle: the new directory
+        // already exists because something wrote one file into it.
+        let temp = tempfile::tempdir().expect("temp dir");
+        let previous = temp.path().join("screen-drop");
+        let current = temp.path().join("screen-stuff");
+        std::fs::create_dir_all(previous.join("boards")).unwrap();
+        std::fs::write(previous.join("boards").join("pitch.json"), b"{}").unwrap();
+        std::fs::create_dir_all(&current).unwrap();
+        std::fs::write(current.join("settings.json"), b"{}").unwrap();
+
+        adopt_previous_data(&previous, &current);
+
+        assert!(current.join("boards").join("pitch.json").is_file());
+    }
+
+    #[test]
+    fn nothing_to_adopt_is_not_an_error() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let current = temp.path().join("screen-stuff");
+        std::fs::create_dir_all(&current).unwrap();
+        adopt_previous_data(&temp.path().join("never-existed"), &current);
+        assert!(current.is_dir());
+    }
+
     use super::*;
 
     fn record(id: &str, name: &str, kind: BoardKind) -> BoardRecord {

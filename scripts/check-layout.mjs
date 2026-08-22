@@ -21,11 +21,11 @@ for (const [width, height] of [
 ]) {
   const page = await browser.newPage({ viewport: { width, height } });
   await page.goto(base, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => "__screenDropStore" in window, null, { timeout: 15000 });
+  await page.waitForFunction(() => "__screenStuffStore" in window, null, { timeout: 15000 });
 
   // A realistic board, and the stage selected — the panel with the most in it.
   await page.evaluate(() => {
-    const useStore = window.__screenDropStore;
+    const useStore = window.__screenStuffStore;
     const store = useStore.getState();
     const monitors = Array.from({ length: 4 }, (_, i) => ({
       id: `monitor:${i + 1}`,

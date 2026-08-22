@@ -333,7 +333,7 @@ async function pickFiles(store: ReturnType<typeof useActions>) {
       multiple: true,
       filters: [
         {
-          name: "Anything Screen Drop can show",
+          name: "Anything Screen Stuff can show",
           extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "mp4", "webm", "mov", "mkv", "pdf"],
         },
       ],
@@ -369,7 +369,7 @@ export function SettingsPage() {
         <div>
           <BackToBoard />
           <h1 className="page__title">Settings</h1>
-          <p className="page__sub">How Screen Drop looks and how it captures.</p>
+          <p className="page__sub">How Screen Stuff looks and how it captures.</p>
         </div>
       </header>
 

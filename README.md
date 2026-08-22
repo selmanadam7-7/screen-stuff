@@ -1,4 +1,4 @@
-# Screen Drop
+# Screen Stuff
 
 An infinite board that holds every screen you have, and hands it to any call.
 
@@ -23,7 +23,7 @@ there is not, then checks the app is actually there rather than assuming. Add
 `-CheckOnly` to see what it would do first. It installs per-user, needs no
 administrator rights, and touches no drivers or system settings.
 
-Or hand this repository to your coding agent and ask it to install Screen Drop
+Or hand this repository to your coding agent and ask it to install Screen Stuff
 -- [`AGENTS.md`](AGENTS.md) tells it everything it needs, including the failure
 modes worth knowing about.
 
@@ -165,7 +165,7 @@ There are exactly three ways sound reaches the other person: your microphone,
 a screen share (which carries the shared app's own audio), or a virtual audio
 device — a real driver install.
 
-So Screen Drop leans on share mode when sound matters. Share the board window and
+So Screen Stuff leans on share mode when sound matters. Share the board window and
 the audio of anything playing on it travels with it. On Discord you can run both
 at once: camera mode carrying the board, plus a screen share of the same window
 carrying the sound.
@@ -174,7 +174,7 @@ carrying the sound.
 
 A web tile is not an iframe. An iframe cannot be composited into the output
 canvas, so web tiles would vanish in camera mode and for guests. Instead each one
-is a real browser window that Screen Drop owns, parked off screen and captured
+is a real browser window that Screen Stuff owns, parked off screen and captured
 like any other window — so it behaves exactly like a monitor tile everywhere it
 matters. **Click in it** brings the page forward for a moment so you can interact,
 then parks it again. Same trade OBS makes.
@@ -204,7 +204,7 @@ works from a hotel, an office network, or behind CGNAT. No account and no
 payment either.
 
 The helper binary is fetched once, on the first use, into
-`%APPDATA%\screen-drop\cloudflared.exe`, and only over HTTPS from Cloudflare's
+`%APPDATA%\screen-stuff\cloudflared.exe`, and only over HTTPS from Cloudflare's
 own repository. It is about 40 MB, which is why it is not in the 2.6 MB
 installer.
 
@@ -222,7 +222,7 @@ What that costs, said plainly:
 ## Boards
 
 Boards save whole — layout, tiles, ink, scenes, hotkeys — as JSON under
-`%APPDATA%\screen-drop\boards`. Save one as a **template** to spawn pre-arranged
+`%APPDATA%\screen-stuff\boards`. Save one as a **template** to spawn pre-arranged
 boards for a call type. A board that already has a file autosaves a few seconds
 after you stop making changes; an unnamed scratch board stays unsaved until you
 decide it is worth keeping.
@@ -299,7 +299,7 @@ The stream URL is printed by `pnpm app` on startup in debug builds.
 
 ## Not built yet
 
-Camera output — Screen Drop appearing as a webcam — is the one promised piece
+Camera output — Screen Stuff appearing as a webcam — is the one promised piece
 that is not here. It needs a registered Media Foundation media source, which is a
 separate COM component rather than a function call, and it is the only part whose
 failure mode could not be verified from a terminal. Share mode covers Discord,

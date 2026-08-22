@@ -42,7 +42,7 @@ const root = document.getElementById("guest-root")!;
 root.innerHTML = `
   <canvas id="guest-stage"></canvas>
   <div class="guest-bar">
-    <span class="guest-brand">Screen Drop</span>
+    <span class="guest-brand">Screen Stuff</span>
     <span class="guest-pip" id="guest-pip"></span>
     <span class="guest-name" id="guest-name"></span>
     <span class="guest-spacer"></span>
@@ -124,10 +124,10 @@ client.onControl = (message) => {
 // ---------------------------------------------------------------------------
 
 const nameInput = document.getElementById("guest-name-input") as HTMLInputElement;
-nameInput.value = localStorage.getItem("screen-drop:guest-name") ?? "";
+nameInput.value = localStorage.getItem("screen-stuff:guest-name") ?? "";
 const join = () => {
   const name = nameInput.value.trim();
-  localStorage.setItem("screen-drop:guest-name", name);
+  localStorage.setItem("screen-stuff:guest-name", name);
   send({ t: "hello", name });
   gate.classList.add("is-gone");
   canvas.focus();

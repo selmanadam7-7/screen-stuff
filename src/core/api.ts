@@ -30,14 +30,14 @@ function devStreamUrl(): string {
   const fromQuery = new URLSearchParams(window.location.search).get("stream");
   if (fromQuery) {
     try {
-      localStorage.setItem("screen-drop:devStream", fromQuery);
+      localStorage.setItem("screen-stuff:devStream", fromQuery);
     } catch {
       /* private mode, not important */
     }
     return fromQuery;
   }
   try {
-    return localStorage.getItem("screen-drop:devStream") ?? "";
+    return localStorage.getItem("screen-stuff:devStream") ?? "";
   } catch {
     return "";
   }
@@ -50,13 +50,13 @@ export async function sessionInfo(): Promise<SessionInfo> {
 
 /**
  * Outside Tauri there is no capture engine to ask, so the browser fallback
- * serves whatever a harness has put on `__screenDropSources`. That is what lets
+ * serves whatever a harness has put on `__screenStuffSources`. That is what lets
  * the UI be developed and screenshotted against a real engine's frames without
  * the desktop shell.
  */
 function offlineSources(): SourceInfo[] {
-  const injected = (window as unknown as { __screenDropSources?: SourceInfo[] })
-    .__screenDropSources;
+  const injected = (window as unknown as { __screenStuffSources?: SourceInfo[] })
+    .__screenStuffSources;
   return Array.isArray(injected) ? injected : [];
 }
 
@@ -92,7 +92,7 @@ export interface BoardRecord {
   doc: unknown;
 }
 
-const LOCAL_KEY = "screen-drop:boards";
+const LOCAL_KEY = "screen-stuff:boards";
 
 function localBoards(): Record<string, BoardRecord> {
   try {
@@ -147,7 +147,7 @@ export async function boardDelete(id: string): Promise<void> {
 export async function settingsGet<T = Record<string, unknown>>(): Promise<T> {
   if (!runningInTauri()) {
     try {
-      return JSON.parse(localStorage.getItem("screen-drop:settings") ?? "{}");
+      return JSON.parse(localStorage.getItem("screen-stuff:settings") ?? "{}");
     } catch {
       return {} as T;
     }
@@ -157,7 +157,7 @@ export async function settingsGet<T = Record<string, unknown>>(): Promise<T> {
 
 export async function settingsSet(value: unknown): Promise<void> {
   if (!runningInTauri()) {
-    localStorage.setItem("screen-drop:settings", JSON.stringify(value));
+    localStorage.setItem("screen-stuff:settings", JSON.stringify(value));
     return;
   }
   return invoke<void>("settings_set", { value });

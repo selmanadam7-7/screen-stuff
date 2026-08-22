@@ -1,9 +1,9 @@
 # Instructions for an AI agent
 
-If someone has asked you to install Screen Drop, this file is what you need.
+If someone has asked you to install Screen Stuff, this file is what you need.
 It is written for you, not for them.
 
-Screen Drop is a Windows desktop app. It puts every monitor, window and camera
+Screen Stuff is a Windows desktop app. It puts every monitor, window and camera
 you own on one infinite canvas, and hands a rectangle of that canvas to Discord,
 Meet, Zoom or Teams as an ordinary shareable window.
 
@@ -29,7 +29,7 @@ powershell -ExecutionPolicy Bypass -File scripts\install.ps1 -CheckOnly
 ```
 
 Nothing here needs administrator rights. Everything installs per-user under
-`%LOCALAPPDATA%\Screen Drop`.
+`%LOCALAPPDATA%\Screen Stuff`.
 
 ## Before you start, know this
 
@@ -51,22 +51,22 @@ take.
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Typing "screen drop" in Windows Search finds nothing | Not installed; they are running a loose `.exe` from the repo | Run `install.ps1`. Only Start Menu shortcuts are indexed. |
+| Typing "screen stuff" in Windows Search finds nothing | Not installed; they are running a loose `.exe` from the repo | Run `install.ps1`. Only Start Menu shortcuts are indexed. |
 | `link.exe not found`, or a build script fails in a C dependency | MSVC build tools missing | Visual Studio Installer -> "Desktop development with C++" |
-| The installer appears to succeed but the app is not there | An older copy was running and the installer skipped the file | Close `screen-drop.exe` and run again. `install.ps1` does this for you. |
+| The installer appears to succeed but the app is not there | An older copy was running and the installer skipped the file | Close `screen-stuff.exe` and run again. `install.ps1` does this for you. |
 | The window is blank or white | WebView2 runtime missing | https://developer.microsoft.com/microsoft-edge/webview2/ |
-| Tiles say "waiting for the first frame" forever | Normal for a second or two. Longer means the capture engine did not start | Check `%LOCALAPPDATA%\Screen Drop` logs, and that the source still exists |
-| A black console window opens with the app | A debug build. Release builds are windows-subsystem binaries | Install the release, do not run `target\debug\screen-drop.exe` |
-| "Anywhere" sharing sits on "setting up" | First use downloads ~40 MB of `cloudflared` | Wait, or drop `cloudflared.exe` into `%APPDATA%\screen-drop\` yourself |
+| Tiles say "waiting for the first frame" forever | Normal for a second or two. Longer means the capture engine did not start | Check `%LOCALAPPDATA%\Screen Stuff` logs, and that the source still exists |
+| A black console window opens with the app | A debug build. Release builds are windows-subsystem binaries | Install the release, do not run `target\debug\screen-stuff.exe` |
+| "Anywhere" sharing sits on "setting up" | First use downloads ~40 MB of `cloudflared` | Wait, or drop `cloudflared.exe` into `%APPDATA%\screen-stuff\` yourself |
 | The public link 404s or 530s for a few seconds | Cloudflare's edge has not started routing yet | Wait ten seconds and reload. `scripts/check-tunnel.mjs` proves the path works |
 
 ## After it installs
 
 Tell the user this much, and no more:
 
-1. Open Screen Drop from the Start Menu.
+1. Open Screen Stuff from the Start Menu.
 2. **Add screens** to put monitors, windows or a camera on the board.
-3. **Go live**, then share the window called **Screen Drop - Board** in
+3. **Go live**, then share the window called **Screen Stuff - Board** in
    whichever call app they use. It is an ordinary window; every app can share it.
 4. Only the blue rectangle -- the **stage** -- is ever shared. Everything else
    on the board is private to them. Press `0` to come back to the stage from

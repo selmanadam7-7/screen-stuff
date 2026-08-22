@@ -7,7 +7,7 @@ import { App } from "./App";
 // board without clicking one together first. Never present in a release build.
 if (import.meta.env.DEV) {
   void import("./store").then(({ useStore }) => {
-    (window as unknown as Record<string, unknown>).__screenDropStore = useStore;
+    (window as unknown as Record<string, unknown>).__screenStuffStore = useStore;
   });
 }
 

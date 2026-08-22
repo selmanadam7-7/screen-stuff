@@ -1,4 +1,4 @@
-//! Screen Drop — an infinite board that holds every screen you have.
+//! Screen Stuff — an infinite board that holds every screen you have.
 //!
 //! Two windows out of one process:
 //!   * **cockpit** (`index.html`) — the control surface, lives on a spare monitor
@@ -239,7 +239,7 @@ fn board_set_always_on_top(app: tauri::AppHandle, on_top: bool) -> CmdResult<()>
 /// way back: the choice is stored in the browser data folder and never
 /// re-prompted, so a single misclick would permanently break camera tiles with
 /// no visible cause. A native app in this position does not ask twice — Windows'
-/// own camera privacy setting is still the real gate, and Screen Drop only
+/// own camera privacy setting is still the real gate, and Screen Stuff only
 /// touches a camera when you put a camera tile on the board.
 #[cfg(windows)]
 fn allow_media_capture(window: &WebviewWindow) {
@@ -384,7 +384,7 @@ fn tunnel_stop(state: tauri::State<'_, AppState>) -> GuestStatus {
 //
 // A web tile is not an iframe. An iframe cannot be composited into the output
 // canvas, which would mean web tiles vanished in camera mode and for guests.
-// Instead each one is a real browser window that Screen Drop owns, parked
+// Instead each one is a real browser window that Screen Stuff owns, parked
 // offscreen and captured like any other window — so it behaves exactly like a
 // monitor tile everywhere it matters. This is the same trade OBS makes.
 
@@ -434,7 +434,7 @@ async fn web_source_open(
     let (park_x, park_y) = park_position();
 
     let window = tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::External(parsed))
-        .title(format!("Screen Drop — {url}"))
+        .title(format!("Screen Stuff — {url}"))
         .inner_size(width.clamp(320, 3840) as f64, height.clamp(240, 2160) as f64)
         .position(park_x as f64, park_y as f64)
         .decorations(false)
@@ -524,7 +524,7 @@ async fn open_region_picker(app: tauri::AppHandle) -> CmdResult<()> {
         "region",
         tauri::WebviewUrl::App("index.html?window=region".into()),
     )
-    .title("Screen Drop — pick a region")
+    .title("Screen Stuff — pick a region")
     .decorations(false)
     .transparent(true)
     .always_on_top(true)
@@ -689,7 +689,7 @@ pub fn run() {
             cockpit_focus,
         ])
         .build(tauri::generate_context!())
-        .expect("Screen Drop could not start")
+        .expect("Screen Stuff could not start")
         .run(|app, event| {
             if let tauri::RunEvent::ExitRequested { .. } = event {
                 if let Some(state) = app.try_state::<AppState>() {

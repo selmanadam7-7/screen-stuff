@@ -48,7 +48,7 @@ type Handler<T> = (payload: T) => void;
 
 let channel: BroadcastChannel | null = null;
 function browserChannel(): BroadcastChannel {
-  if (!channel) channel = new BroadcastChannel("screen-drop");
+  if (!channel) channel = new BroadcastChannel("screen-stuff");
   return channel;
 }
 

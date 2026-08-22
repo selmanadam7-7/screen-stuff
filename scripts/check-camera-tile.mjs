@@ -16,10 +16,10 @@ page.on("pageerror", (e) => problems.push(String(e)));
 await page.goto(`http://localhost:4483/?stream=${encodeURIComponent(stream)}`, {
   waitUntil: "networkidle",
 });
-await page.waitForFunction(() => "__screenDropStore" in window, null, { timeout: 15000 });
+await page.waitForFunction(() => "__screenStuffStore" in window, null, { timeout: 15000 });
 
 const report = await page.evaluate(async () => {
-  const useStore = window.__screenDropStore;
+  const useStore = window.__screenStuffStore;
   const store = useStore.getState();
   store.setBoardProp({ name: "Camera check" });
   store.addCamera();
@@ -48,7 +48,7 @@ await page.screenshot({ path: `${outDir}/camera-rect.png` });
 
 // And as a circle, which takes a different clip path.
 await page.evaluate(async () => {
-  const useStore = window.__screenDropStore;
+  const useStore = window.__screenStuffStore;
   const id = useStore.getState().doc.tiles.find((t) => t.kind === "camera").id;
   useStore.getState().patchTile(id, { shape: "circle", w: 600, h: 600 });
   useStore.getState().fitEverything();

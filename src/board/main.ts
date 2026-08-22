@@ -68,7 +68,7 @@ function markDirty() {
 async function boot() {
   const info = await sessionInfo();
   if (!info.streamUrl) {
-    flash("no frame server — open Screen Drop from the app, not a browser tab");
+    flash("no frame server — open Screen Stuff from the app, not a browser tab");
   } else {
     client = new FrameClient(info.streamUrl);
     client.onConnectionChange = (connected) => {
@@ -214,6 +214,6 @@ function setupWindowDragging() {
 }
 
 /** Exposed so the cockpit's capture path can grab the same pixels. */
-(window as any).__screenDropCanvas = canvas;
+(window as any).__screenStuffCanvas = canvas;
 
 void boot();

@@ -19,14 +19,14 @@ page.on("console", (m) => m.type() === "error" && problems.push(m.text()));
 page.on("pageerror", (e) => problems.push(String(e)));
 
 await page.goto(base, { waitUntil: "networkidle" });
-await page.waitForFunction(() => "__screenDropStore" in window, null, { timeout: 15000 });
+await page.waitForFunction(() => "__screenStuffStore" in window, null, { timeout: 15000 });
 
 /** Board space -> page pixels, using the same aspect correction the editor uses. */
 async function toScreen(point) {
   return page.evaluate(({ x, y }) => {
     const canvas = document.querySelector(".editor canvas");
     const box = canvas.getBoundingClientRect();
-    const state = window.__screenDropStore.getState();
+    const state = window.__screenStuffStore.getState();
     const aspect = canvas.width / canvas.height;
     const v =
       Math.abs(state.view.w / state.view.h - aspect) > 0.001
@@ -41,7 +41,7 @@ async function toScreen(point) {
 
 const read = () =>
   page.evaluate(() => {
-    const s = window.__screenDropStore.getState();
+    const s = window.__screenStuffStore.getState();
     return {
       view: s.view,
       stage: s.doc.frame,
@@ -58,7 +58,7 @@ const read = () =>
 const act = (fn, arg) =>
   page.evaluate(
     ({ body, arg }) => {
-      const store = window.__screenDropStore.getState();
+      const store = window.__screenStuffStore.getState();
       return new Function("store", "arg", body)(store, arg);
     },
     { body: fn, arg: arg ?? null },
@@ -265,7 +265,7 @@ await act("store.setStageLocked(false)");
 // 8. It survives a save and reload
 // --------------------------------------------------------------------------
 const persisted = await page.evaluate(() => {
-  const useStore = window.__screenDropStore;
+  const useStore = window.__screenStuffStore;
   const store = useStore.getState();
   store.setStage({ x: 640, y: -320, w: 1280, h: 720 }, { force: true });
   const saved = JSON.parse(JSON.stringify(useStore.getState().doc));
@@ -285,7 +285,7 @@ check(
 // 9. A spotlight is a loan, not a move
 // --------------------------------------------------------------------------
 await page.evaluate(() => {
-  const useStore = window.__screenDropStore;
+  const useStore = window.__screenStuffStore;
   const store = useStore.getState();
   store.newBoard("spotlight");
   const monitors = [
@@ -340,7 +340,7 @@ check("...and Back returns your view", same((await read()).view, wandered2.view,
 // 11. Opt in to the old behaviour and it comes back
 // --------------------------------------------------------------------------
 await page.evaluate(() => {
-  const store = window.__screenDropStore.getState();
+  const store = window.__screenStuffStore.getState();
   store.newBoard("follow");
   store.setFollowView(true);
 });

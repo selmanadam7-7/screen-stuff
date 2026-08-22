@@ -16,7 +16,7 @@ page.on("console", (m) => m.type() === "error" && problems.push(m.text()));
 page.on("pageerror", (e) => problems.push(String(e)));
 
 await page.goto(base, { waitUntil: "networkidle" });
-await page.waitForFunction(() => "__screenDropStore" in window, null, { timeout: 15000 });
+await page.waitForFunction(() => "__screenStuffStore" in window, null, { timeout: 15000 });
 
 const run = (fn, arg) => page.evaluate(fn, arg);
 const shot = async (name, wait = 500) => {
@@ -39,18 +39,18 @@ const MONITORS = (count) =>
 
 // 1. The empty board — the view he opens on, now with the stage named.
 await run(() => {
-  const store = window.__screenDropStore.getState();
+  const store = window.__screenStuffStore.getState();
   store.newBoard("Untitled board");
 });
 await shot("01-opening");
 
 // 2. The stage selected: handles, and the inspector explaining what it is.
-await run(() => window.__screenDropStore.getState().selectStage(true));
+await run(() => window.__screenStuffStore.getState().selectStage(true));
 await shot("02-selected");
 
 // 3. A real board, stage on one group, the rest parked off to the side.
 await run((monitors) => {
-  const useStore = window.__screenDropStore;
+  const useStore = window.__screenStuffStore;
   const store = useStore.getState();
   store.newBoard("Discovery call");
   useStore.setState({ sources: monitors, monitors });
@@ -64,7 +64,7 @@ await shot("03-board", 2500);
 
 // 4. Off the stage: the private area, and the hint that says so.
 await run(() => {
-  const store = window.__screenDropStore.getState();
+  const store = window.__screenStuffStore.getState();
   const note = store.doc.tiles.find((t) => t.kind === "note");
   if (note) store.patchTile(note.id, { x: store.doc.frame.x + 2600, y: store.doc.frame.y + 120 });
   store.fitEverything();
@@ -73,7 +73,7 @@ await shot("04-offstage", 1600);
 
 // 5. The stage tightened onto one screen, which is the move the app exists for.
 await run(() => {
-  const store = window.__screenDropStore.getState();
+  const store = window.__screenStuffStore.getState();
   const first = store.doc.tiles.find((t) => t.kind === "source");
   store.showStage();
   if (first) {
@@ -88,12 +88,12 @@ await run(() => {
 await shot("05-tightened", 1600);
 
 // 6. The same thing in the dark look, because half of any call is at night.
-await run(() => window.__screenDropStore.getState().setLook("graphite-dark"));
+await run(() => window.__screenStuffStore.getState().setLook("graphite-dark"));
 await shot("06-dark", 900);
 
 // 7. The shortcut sheet, since two of the new keys live there.
 await run(() => {
-  const store = window.__screenDropStore.getState();
+  const store = window.__screenStuffStore.getState();
   store.setLook("pure-white");
   store.setPanel("settings");
 });

@@ -2,7 +2,7 @@
  * Share board.
  *
  * The reference lays this out as invite / link / permissions / access summary,
- * and that shape is kept. What it is wired to is what Screen Drop actually has:
+ * and that shape is kept. What it is wired to is what Screen Stuff actually has:
  * a real link, three live powers, and a real roster. There is no invite-by-email
  * box here, because there are no accounts to invite.
  *

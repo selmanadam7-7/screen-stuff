@@ -154,12 +154,11 @@ impl Drop for Tunnel {
 }
 
 /// Where we keep the downloaded helper.
+///
+/// The shared data directory, so a helper downloaded under the app's old name
+/// is still there after the rename rather than being fetched again.
 fn cache_path() -> Result<PathBuf> {
-    let dir = dirs::data_dir()
-        .context("no application data directory on this machine")?
-        .join("screen-drop");
-    std::fs::create_dir_all(&dir)?;
-    Ok(dir.join("cloudflared.exe"))
+    Ok(crate::store::app_data_dir()?.join("cloudflared.exe"))
 }
 
 /// Find cloudflared, downloading it once if this machine has never needed it.
@@ -370,6 +369,6 @@ mod tests {
     fn the_cache_sits_under_the_apps_own_data_directory() {
         let path = cache_path().expect("a data directory");
         assert!(path.ends_with("cloudflared.exe"));
-        assert!(path.to_string_lossy().contains("screen-drop"));
+        assert!(path.to_string_lossy().contains("screen-stuff"));
     }
 }

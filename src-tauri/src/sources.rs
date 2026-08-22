@@ -1,4 +1,4 @@
-//! What Screen Drop can put on the board: monitors, windows, and crops of either.
+//! What Screen Stuff can put on the board: monitors, windows, and crops of either.
 //!
 //! Source ids are strings so they survive a round-trip through JSON, localStorage
 //! and a saved board file:

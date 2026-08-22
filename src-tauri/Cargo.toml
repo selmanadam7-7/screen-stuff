@@ -1,5 +1,5 @@
 [package]
-name = "screen-drop"
+name = "screen-stuff"
 version = "0.1.0"
 description = "An infinite board that holds every screen you have, and hands it to any call as a window or a webcam."
 authors = ["Adam Selman"]
@@ -7,7 +7,7 @@ edition = "2021"
 rust-version = "1.82"
 
 [lib]
-name = "screen_drop_lib"
+name = "screen_stuff_lib"
 # Desktop only, so an rlib is all the binary needs. The template's extra
 # `cdylib`/`staticlib` targets exist for mobile, and building a cdylib with
 # `opt-level = 1` and incremental compilation on makes rustc leak internal

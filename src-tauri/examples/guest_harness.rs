@@ -7,9 +7,9 @@
 //!
 //! Prints the guest URL on stdout and holds until interrupted.
 
-use screen_drop_lib::capture::CaptureEngine;
-use screen_drop_lib::guest::{GuestHub, Powers};
-use screen_drop_lib::{guest_server, sources};
+use screen_stuff_lib::capture::CaptureEngine;
+use screen_stuff_lib::guest::{GuestHub, Powers};
+use screen_stuff_lib::{guest_server, sources};
 use std::sync::Arc;
 
 #[tokio::main]

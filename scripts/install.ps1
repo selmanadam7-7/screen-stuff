@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Installs Screen Drop on Windows.
+    Installs Screen Stuff on Windows.
 
 .DESCRIPTION
     Two routes, tried in order:
@@ -43,7 +43,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-$AppName = "Screen Drop"
+$AppName = "Screen Stuff"
 $InstallDir = Join-Path $env:LOCALAPPDATA $AppName
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
@@ -64,7 +64,7 @@ function Have([string]$name) {
 Step "Checking this machine"
 
 if ([Environment]::OSVersion.Platform -ne "Win32NT") {
-    Die "Screen Drop is Windows-only. It captures through Windows Graphics Capture, which has no equivalent elsewhere."
+    Die "Screen Stuff is Windows-only. It captures through Windows Graphics Capture, which has no equivalent elsewhere."
 }
 
 $build = [int](Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -ErrorAction SilentlyContinue).CurrentBuild
@@ -117,7 +117,7 @@ function Get-ReleaseInstaller {
     Say "   looking for a release in $slug"
     try {
         $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$slug/releases/latest" `
-            -Headers @{ "User-Agent" = "screen-drop-install" } -TimeoutSec 20
+            -Headers @{ "User-Agent" = "screen-stuff-install" } -TimeoutSec 20
     } catch {
         # A private repo answers 404 to an anonymous request, which is the
         # normal case before launch rather than anything being wrong.
@@ -229,7 +229,7 @@ if (-not (Test-Path $installer)) { Die "No installer to run at '$installer'." }
 Step "Installing"
 
 # The installer refuses to overwrite a running copy, and the failure is silent.
-Get-Process -Name "screen-drop" -ErrorAction SilentlyContinue | ForEach-Object {
+Get-Process -Name "screen-stuff" -ErrorAction SilentlyContinue | ForEach-Object {
     Warn "closing a running copy (pid $($_.Id))"
     $_.CloseMainWindow() | Out-Null
     Start-Sleep -Milliseconds 800
@@ -246,7 +246,7 @@ if ($proc.ExitCode -ne 0) { Die "The installer exited with code $($proc.ExitCode
 
 Step "Checking the install"
 
-$exe = Join-Path $InstallDir "screen-drop.exe"
+$exe = Join-Path $InstallDir "screen-stuff.exe"
 if (Test-Path $exe) {
     Ok "installed to $InstallDir"
 } else {
@@ -254,9 +254,9 @@ if (Test-Path $exe) {
 }
 
 $shortcut = Get-ChildItem -Path (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs") `
-    -Filter "*Screen Drop*" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    -Filter "*Screen Stuff*" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($shortcut) {
-    Ok "Start Menu shortcut  - type 'screen drop' to find it"
+    Ok "Start Menu shortcut  - type 'screen stuff' to find it"
 } else {
     Warn "No Start Menu shortcut was created. Launch it from $exe."
 }
@@ -266,10 +266,10 @@ $entry = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Unins
 if ($entry) { Ok "version $($entry.DisplayVersion), removable from Settings -> Apps" }
 
 Say ""
-Say "Done. Screen Drop is installed." -ForegroundColor Green
+Say "Done. Screen Stuff is installed." -ForegroundColor Green
 Say ""
 Say "  Open it from the Start Menu, add your screens, then share the"
-Say "  'Screen Drop - Board' window in Discord, Meet, Zoom or Teams."
+Say "  'Screen Stuff - Board' window in Discord, Meet, Zoom or Teams."
 Say ""
 Say "  Only the blue rectangle - the stage - is ever shared. The rest of"
 Say "  the board is yours."

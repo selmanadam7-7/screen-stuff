@@ -12,10 +12,10 @@ page.on("pageerror", (e) => problems.push(String(e)));
 await page.goto(`http://localhost:4483/?stream=${encodeURIComponent(stream)}`, {
   waitUntil: "networkidle",
 });
-await page.waitForFunction(() => "__screenDropStore" in window, null, { timeout: 15000 });
+await page.waitForFunction(() => "__screenStuffStore" in window, null, { timeout: 15000 });
 
 await page.evaluate((count) => {
-  const useStore = window.__screenDropStore;
+  const useStore = window.__screenStuffStore;
   const store = useStore.getState();
   // Pretend the source list arrived, then use the normal path to add them.
   useStore.setState({
@@ -54,7 +54,7 @@ await page.waitForTimeout(5000);
 await page.screenshot({ path: `${outDir}/cockpit-live.png` });
 
 // The guests panel.
-await page.evaluate(() => window.__screenDropStore.getState().setPanel("guests"));
+await page.evaluate(() => window.__screenStuffStore.getState().setPanel("guests"));
 await page.waitForTimeout(700);
 await page.screenshot({ path: `${outDir}/cockpit-guests.png` });
 

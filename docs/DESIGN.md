@@ -1,6 +1,6 @@
 # The design system
 
-Screen Drop's interface is built from fifteen reference screenshots. This is how
+Screen Stuff's interface is built from fifteen reference screenshots. This is how
 that translated into a system, and the rules that keep it one.
 
 ## The palette was measured, not matched
@@ -142,7 +142,7 @@ Two supporting decisions:
   drag re-aiming the broadcast mid-call. Scenes, `Enter` and the inspector's
   number fields still move it, because none of those is an accident.
 
-## What the references show that Screen Drop does not do
+## What the references show that Screen Stuff does not do
 
 The reference set includes screens for features this app has no backing for, and
 they were deliberately not faked:

@@ -22,11 +22,11 @@ page.on("pageerror", (e) => problems.push(String(e)));
 await page.goto(`http://localhost:4483/?stream=${encodeURIComponent(stream)}`, {
   waitUntil: "networkidle",
 });
-await page.waitForFunction(() => "__screenDropStore" in window, null, { timeout: 20000 });
+await page.waitForFunction(() => "__screenStuffStore" in window, null, { timeout: 20000 });
 
 // Build a board worth photographing.
 await page.evaluate(async () => {
-  const useStore = window.__screenDropStore;
+  const useStore = window.__screenStuffStore;
   const store = useStore.getState();
   const monitors = Array.from({ length: 4 }, (_, i) => ({
     id: `monitor:${i + 1}`,
@@ -53,7 +53,7 @@ await page.evaluate(async () => {
     }),
   );
   // The offline source list the api layer serves, so refreshes keep working.
-  window.__screenDropSources = [...monitors, ...windows];
+  window.__screenStuffSources = [...monitors, ...windows];
   useStore.setState({ sources: [...monitors, ...windows], monitors });
   store.setBoardProp({ name: "Discovery call" });
   store.addSources(monitors.map((m) => m.id));
@@ -70,7 +70,7 @@ const shot = async (name, ms = 900) => {
 };
 
 const setLook = async (look) => {
-  await page.evaluate((l) => window.__screenDropStore.getState().setLook(l), look);
+  await page.evaluate((l) => window.__screenStuffStore.getState().setLook(l), look);
   await page.waitForTimeout(700);
 };
 
@@ -83,7 +83,7 @@ await setLook("pure-white");
 
 // --- a tile selected, so the inspector is full ----------------------------
 await page.evaluate(() => {
-  const useStore = window.__screenDropStore;
+  const useStore = window.__screenStuffStore;
   const tile = useStore.getState().doc.tiles.find((t) => t.kind === "source");
   useStore.getState().select([tile.id]);
 });
@@ -91,10 +91,10 @@ await shot("inspector-tile");
 
 // --- pages ----------------------------------------------------------------
 for (const panel of ["boards", "media", "settings"]) {
-  await page.evaluate((p) => window.__screenDropStore.getState().setPanel(p), panel);
+  await page.evaluate((p) => window.__screenStuffStore.getState().setPanel(p), panel);
   await shot(`page-${panel}`);
 }
-await page.evaluate(() => window.__screenDropStore.getState().setPanel("board"));
+await page.evaluate(() => window.__screenStuffStore.getState().setPanel("board"));
 
 // --- modals ---------------------------------------------------------------
 await page.click('[aria-label="Add a screen"]');
@@ -108,7 +108,7 @@ await page.keyboard.press("Escape");
 // --- dark, with a tile selected -------------------------------------------
 await setLook("graphite-dark");
 await page.evaluate(() => {
-  const useStore = window.__screenDropStore;
+  const useStore = window.__screenStuffStore;
   const tile = useStore.getState().doc.tiles.find((t) => t.kind === "source");
   useStore.getState().select([tile.id]);
 });

@@ -47,7 +47,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: screen-drop-installer
+          name: screen-stuff-installer
           path: src-tauri/target/release/bundle/nsis/*-setup.exe
 
       - uses: softprops/action-gh-release@v2
@@ -63,4 +63,4 @@ jobs:
             then **Run anyway**. It installs per-user; no administrator prompt.
 
             Or hand your coding agent this repository and ask it to install
-            Screen Drop. See [AGENTS.md](AGENTS.md).
+            Screen Stuff. See [AGENTS.md](AGENTS.md).

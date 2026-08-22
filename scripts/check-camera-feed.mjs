@@ -15,17 +15,17 @@ page.on("pageerror", (e) => problems.push(String(e)));
 await page.goto(`http://localhost:4483/?stream=${encodeURIComponent(stream)}`, {
   waitUntil: "networkidle",
 });
-await page.waitForFunction(() => "__screenDropStore" in window, null, { timeout: 15000 });
+await page.waitForFunction(() => "__screenStuffStore" in window, null, { timeout: 15000 });
 
 // Add a camera tile, then open the guest link — publishing is driven by the
 // app's own effect, so flipping the real flag is what actually exercises it.
 const { feedSource, publishing } = await page.evaluate(async () => {
-  const useStore = window.__screenDropStore;
+  const useStore = window.__screenStuffStore;
   useStore.getState().addCamera();
   const tile = useStore.getState().doc.tiles.find((t) => t.kind === "camera");
   useStore.setState({ guests: { running: true, link: "http://probe/g/x", guests: [] } });
   await new Promise((r) => setTimeout(r, 3000));
-  return { feedSource: tile.source, publishing: window.__screenDropCameraFeeds.publishing };
+  return { feedSource: tile.source, publishing: window.__screenStuffCameraFeeds.publishing };
 });
 
 // Now watch it from outside, exactly as a guest's renderer would.

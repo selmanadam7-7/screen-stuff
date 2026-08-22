@@ -1,4 +1,4 @@
-// Draws the Screen Drop mark and writes every icon size Tauri asks for.
+// Draws the Screen Stuff mark and writes every icon size Tauri asks for.
 // No image dependencies: PNG is deflate + a couple of chunks, and .ico happily
 // wraps PNG payloads.
 import { deflateSync } from "node:zlib";

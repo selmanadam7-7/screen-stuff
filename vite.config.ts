@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "node:path";
 
-// Screen Drop ships three pages out of one bundle:
+// Screen Stuff ships three pages out of one bundle:
 //   index.html  -> the cockpit (React control surface, lives on monitor 4)
 //   board.html  -> the board (the clean canvas that goes on air)
 //   guest.html  -> what a guest opens, served by Rust over the local network

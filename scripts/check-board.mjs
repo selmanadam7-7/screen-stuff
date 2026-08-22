@@ -119,7 +119,7 @@ const report = await page.evaluate(async (count) => {
     fps: 30,
   };
 
-  const channel = new BroadcastChannel("screen-drop");
+  const channel = new BroadcastChannel("screen-stuff");
   channel.postMessage({
     target: "board",
     event: "sd:snapshot",

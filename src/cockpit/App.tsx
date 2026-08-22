@@ -85,7 +85,7 @@ function Cockpit() {
   useEffect(() => {
     cameraFeeds.setClient(client);
     if (import.meta.env.DEV) {
-      (window as unknown as Record<string, unknown>).__screenDropCameraFeeds = cameraFeeds;
+      (window as unknown as Record<string, unknown>).__screenStuffCameraFeeds = cameraFeeds;
     }
     return () => cameraFeeds.stopAll();
   }, [client, cameraFeeds]);
@@ -147,13 +147,13 @@ function Cockpit() {
     }).then((un) => unlisteners.push(un));
 
     const openScreens = () => setScreensOpen(true);
-    window.addEventListener("screen-drop:add-screens", openScreens);
+    window.addEventListener("screen-stuff:add-screens", openScreens);
 
     return () => {
       removeLocal();
       removeGlobal?.();
       unlisteners.forEach((un) => un());
-      window.removeEventListener("screen-drop:add-screens", openScreens);
+      window.removeEventListener("screen-stuff:add-screens", openScreens);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -223,7 +223,7 @@ function Cockpit() {
       onDrop={(e) => {
         e.preventDefault();
         setDragOver(false);
-        const source = e.dataTransfer.getData("application/x-screen-drop-source");
+        const source = e.dataTransfer.getData("application/x-screen-stuff-source");
         if (source) {
           store.addSources([source]);
           return;

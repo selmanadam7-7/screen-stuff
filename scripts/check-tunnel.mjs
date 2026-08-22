@@ -12,12 +12,12 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const SECRET = "screen-drop-tunnel-check-" + process.pid;
+const SECRET = "screen-stuff-tunnel-check-" + process.pid;
 const READY_TIMEOUT_MS = 60_000;
 
 const candidates = [
-  join(process.env.APPDATA ?? join(homedir(), "AppData/Roaming"), "screen-drop/cloudflared.exe"),
-  join(homedir(), "AppData/Roaming/screen-drop/cloudflared.exe"),
+  join(process.env.APPDATA ?? join(homedir(), "AppData/Roaming"), "screen-stuff/cloudflared.exe"),
+  join(homedir(), "AppData/Roaming/screen-stuff/cloudflared.exe"),
 ];
 const exe = candidates.find((p) => existsSync(p));
 if (!exe) {
@@ -115,7 +115,7 @@ for (let attempt = 1; attempt <= 20; attempt++) {
   try {
     const res = await fetch(url + "/health", {
       signal: AbortSignal.timeout(15_000),
-      headers: { "user-agent": "screen-drop-check" },
+      headers: { "user-agent": "screen-stuff-check" },
     });
     lastNote = `HTTP ${res.status}`;
     if (res.ok) {

@@ -22,7 +22,7 @@
 
 ### Camera output
 
-Screen Drop appearing as a webcam, so it works in apps you never share a window
+Screen Stuff appearing as a webcam, so it works in apps you never share a window
 in.
 
 **What it needs.** Windows has no way for a normal process to *be* a camera. The
@@ -75,7 +75,7 @@ through a third party. Neither is worth running infrastructure for yet.
 
 - **Session recording.** Decided against: the call is the call.
 - **A bundled virtual audio device.** Camera streams carry no audio anywhere, in
-  any app. Rather than install an audio driver by default, Screen Drop leans on
+  any app. Rather than install an audio driver by default, Screen Stuff leans on
   share mode when sound matters. If that ever stops being enough, the device
   becomes an optional separate download — never something the installer does to
   a machine on its own.

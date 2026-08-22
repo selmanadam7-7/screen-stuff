@@ -86,7 +86,7 @@ pub async fn start(engine: Arc<CaptureEngine>) -> Result<RunningServer> {
 }
 
 async fn health() -> impl IntoResponse {
-    (StatusCode::OK, "screen-drop")
+    (StatusCode::OK, "screen-stuff")
 }
 
 /// Pulls `token` out of a query string without pulling in a URL parser.

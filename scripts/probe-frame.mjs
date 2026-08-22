@@ -1,4 +1,4 @@
-// Development probe: connect to a running Screen Drop engine, pull one frame
+// Development probe: connect to a running Screen Stuff engine, pull one frame
 // from every source given on the command line, and write them out as JPEGs.
 // Proves capture -> scale -> encode -> transport without launching any UI.
 import { writeFileSync } from "node:fs";
