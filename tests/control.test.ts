@@ -177,6 +177,10 @@ const withTiles = () => {
   return doc;
 };
 
+/** A tile named "camera", because two documented examples address one. */
+const cameraLike = (): Tile =>
+  ({ ...makeNoteTile("camera"), label: "camera" }) as Tile;
+
 const ok = (outcome: Awaited<ReturnType<typeof perform>>) => {
   if ("error" in outcome) throw new Error(`expected a result, got: ${outcome.error}`);
   return outcome.result as Record<string, unknown>;
@@ -330,6 +334,112 @@ describe("answers describe what happened", () => {
     const { target } = fakeTarget(withTiles());
     const result = ok(await perform(target, "tile", { tile: "Code", x: 42, hidden: true }));
     expect(result.tile).toMatchObject({ x: 42, hidden: true });
+  });
+});
+
+describe("the rest of the table", () => {
+  it("recalls a scene by name, and saves the shot you are on", async () => {
+    const { target, calls } = fakeTarget(addScene(withTiles(), "Wide", { x: 0, y: 0, w: 1920, h: 1080 }, "3"));
+    expect(ok(await perform(target, "scene", { scene: "wide" })).scene).toBe("Wide");
+    expect(calls.some((c) => c.startsWith("scene:"))).toBe(true);
+    expect(ok(await perform(target, "scene", { save: "Tight" })).saved).toBe("Tight");
+    expect(calls).toContain("saveScene:Tight");
+  });
+
+  it("finds a scene by its hotkey, which is what a numbered button sends", async () => {
+    const { target } = fakeTarget(addScene(withTiles(), "Wide", { x: 0, y: 0, w: 1920, h: 1080 }, "3"));
+    expect(ok(await perform(target, "scene", { scene: "3" })).scene).toBe("Wide");
+  });
+
+  it("says which scenes exist when the one asked for does not", async () => {
+    const { target } = fakeTarget(addScene(emptyBoard(), "Wide", { x: 0, y: 0, w: 16, h: 9 }, ""));
+    expect(refusal(await perform(target, "scene", { scene: "narrow" }))).toMatch(/Saved: Wide/);
+  });
+
+  it("puts a name in the corner and takes it off again", async () => {
+    const { target } = fakeTarget();
+    const up = ok(await perform(target, "lower-third", { name: "Adam", role: "Founder" }));
+    expect(up.lowerThird).toEqual({ name: "Adam", role: "Founder" });
+    expect(ok(await perform(target, "lower-third", { clear: true })).lowerThird).toBeNull();
+  });
+
+  it("refuses a lower third with no name rather than showing an empty bar", async () => {
+    const { target } = fakeTarget();
+    expect(refusal(await perform(target, "lower-third", { role: "Founder" }))).toMatch(/needs a/);
+  });
+
+  it("spotlights a tile and lets go of it", async () => {
+    const { target } = fakeTarget(withTiles());
+    const on = ok(await perform(target, "spotlight", { tile: "Slides" }));
+    expect((on.spotlight as { name: string }).name).toBe("Slides");
+    expect(target.spotlight).toBe((on.spotlight as { id: string }).id);
+    expect(ok(await perform(target, "spotlight", { off: true })).spotlight).toBeNull();
+    expect(target.spotlight).toBeNull();
+  });
+
+  it("goes private and comes back", async () => {
+    const { target } = fakeTarget(withTiles());
+    expect(ok(await perform(target, "private", { on: true })).private).toBe(true);
+    expect(target.isPrivate).toBe(true);
+    expect(ok(await perform(target, "private", { on: false })).private).toBe(false);
+  });
+
+  it("treats a bare private with no body as turning it on", async () => {
+    // What a Stream Deck sends when the button was set up in a hurry.
+    const { target } = fakeTarget();
+    expect(ok(await perform(target, "private", {})).private).toBe(true);
+  });
+
+  it("switches following on and off", async () => {
+    const { target } = fakeTarget();
+    expect(ok(await perform(target, "follow", { on: true })).follow).toBe(true);
+    expect(target.followView).toBe(true);
+    expect(ok(await perform(target, "follow", { on: false })).follow).toBe(false);
+  });
+
+  it("takes the three auto-framing modes and nothing else", async () => {
+    const { target } = fakeTarget();
+    for (const mode of ["monitor", "window", "off"]) {
+      expect(ok(await perform(target, "autoframe", { mode })).autoframe).toBe(mode);
+      expect(target.autoFrame).toBe(mode);
+    }
+    expect(refusal(await perform(target, "autoframe", { mode: "cursor" }))).toMatch(
+      /off, monitor or window/,
+    );
+  });
+
+  it("flashes a line at the operator and nobody else", async () => {
+    const { target, calls } = fakeTarget();
+    expect(ok(await perform(target, "flash", { message: "two minutes" })).flashed).toBe(
+      "two minutes",
+    );
+    expect(calls).toContain("toast:two minutes");
+  });
+
+  it("refuses an empty flash rather than blinking nothing", async () => {
+    const { target } = fakeTarget();
+    expect(refusal(await perform(target, "flash", { message: "   " }))).toMatch(/say what to show/);
+  });
+
+  it("hands back the shot as a data url", async () => {
+    const { target } = fakeTarget();
+    expect(ok(await perform(target, "shot", {}))).toEqual({ png: "data:image/png;base64,AAAA" });
+  });
+
+  it("adds a camera, a note and a web tile", async () => {
+    const { target, calls } = fakeTarget();
+    // The camera and web paths do not create tiles in this double, so they come
+    // back as refusals -- what matters is that each reached the right action.
+    await perform(target, "add", { camera: true });
+    expect(calls).toContain("addCamera");
+    await perform(target, "add", { web: "https://example.com" });
+    expect(calls).toContain("addWeb:https://example.com");
+    expect((ok(await perform(target, "add", { note: "hello" })).added as unknown[]).length).toBe(1);
+  });
+
+  it("says what to add when told nothing", async () => {
+    const { target } = fakeTarget();
+    expect(refusal(await perform(target, "add", {}))).toMatch(/say what to add/);
   });
 });
 
@@ -487,6 +597,30 @@ describe("the reference", () => {
       expect(action.summary.length).toBeGreaterThan(10);
       expect(action.accepts.length).toBeGreaterThan(0);
       expect(action.example.post).toBe(`/${action.name}`);
+    }
+  });
+
+  it("documents examples that are actually valid requests", async () => {
+    // The reference is generated, so it can never list an action that does not
+    // exist. It can still list an example that stopped being valid when the
+    // action's body changed, and nothing else would catch that -- a reference
+    // full of examples that get refused is worse than no reference.
+    let doc = withTiles();
+    doc = addTile(doc, makeNoteTile("Slides"));
+    doc = addScene(doc, "Wide", { x: 0, y: 0, w: 1920, h: 1080 }, "1");
+
+    // The family of refusals that mean "your request was malformed", as opposed
+    // to "the board is not in a state where that makes sense".
+    const malformed = /say (which|what)|needs a|is not a|not a preset|has to be/;
+
+    for (const action of reference().actions) {
+      const { target } = fakeTarget(doc);
+      // A camera tile so { "tile": "camera", ... } resolves like it would live.
+      target.doc = { ...target.doc, tiles: [...target.doc.tiles, cameraLike()] };
+      const outcome = await perform(target, action.name, action.example.body);
+      if ("error" in outcome && malformed.test(outcome.error)) {
+        throw new Error(`the documented example for "${action.name}" is not valid: ${outcome.error}`);
+      }
     }
   });
 
