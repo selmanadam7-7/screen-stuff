@@ -11,6 +11,7 @@ import * as api from "../../core/api";
 import {
   CameraIcon,
   CommentIcon,
+  HideIcon,
   ImageIcon,
   NoteIcon,
   PanIcon,
@@ -51,9 +52,10 @@ export function Toolbar({
   const ink = useStore((s) => s.ink);
   const panMode = useStore((s) => s.panMode);
   const stageSelected = useStore((s) => s.stageSelected);
+  const redacting = useStore((s) => s.redacting);
   const [inkMenu, setInkMenu] = useState<{ x: number; y: number } | null>(null);
 
-  const selectActive = !ink.tool && !panMode && !stageSelected;
+  const selectActive = !ink.tool && !panMode && !stageSelected && !redacting;
 
   return (
     <div className="toolbar">
@@ -109,6 +111,12 @@ export function Toolbar({
 
       <span className="toolbar__rule" />
 
+      <Tool
+        icon={HideIcon}
+        label="Hide a part of a tile from the audience"
+        active={redacting}
+        onClick={() => store.setRedacting(!redacting)}
+      />
       <Tool icon={NoteIcon} label="Add a note" shortcut="N" onClick={() => store.addNote()} />
       <button
         className={cx("tool", ink.tool && "is-active")}

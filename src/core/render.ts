@@ -14,6 +14,7 @@
 
 import { fitInto, rectCenter, tileRect } from "./geometry";
 import { strokeOpacity } from "./doc";
+import { redactionsOf, toBoardRect } from "./redact";
 import { stageHandles, stageTabFor } from "./stage";
 import { readTheme, type Theme } from "./theme";
 import type { BoardDoc, Rect, Stroke, Tile, Vec2 } from "./types";
@@ -57,6 +58,8 @@ export interface ChromeOptions {
   showGrid: boolean;
   /** Drawn while dragging out a new tile or marquee. */
   marquee?: Rect | null;
+  /** Drawn while dragging out a part of a tile to hide. */
+  redacting?: Rect | null;
   /** True when the audience has been held on the last shot. */
   isPrivate: boolean;
   hoverTileId?: string | null;
@@ -196,6 +199,11 @@ function drawTile(input: RenderInput, tile: Tile, scale: number, theme: Theme) {
       drawPlaceholder(ctx, tile, body, media.statusFor?.(tile) ?? null, scale, theme);
     }
   }
+
+  // Covered before the clip is released, so a redaction can never be drawn
+  // outside the tile it belongs to — and before the title bar, which is ours
+  // rather than the captured window's.
+  drawRedactions(ctx, tile, body, scale, theme);
 
   ctx.restore();
 
@@ -652,6 +660,18 @@ function drawChrome(
     ctx.restore();
   }
 
+  if (chrome.redacting) {
+    const r = chrome.redacting;
+    ctx.save();
+    ctx.fillStyle = "rgba(30,35,41,0.55)";
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.strokeStyle = CHROME.guide;
+    ctx.lineWidth = 1.5 * px;
+    ctx.setLineDash([7 * px, 5 * px]);
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    ctx.restore();
+  }
+
   if (chrome.marquee) {
     ctx.save();
     ctx.fillStyle = theme.accentTint;
@@ -730,6 +750,59 @@ function drawStage(
     ctx.stroke();
   }
   ctx.restore();
+}
+
+/**
+ * Cover the parts of a tile that are never shared.
+ *
+ * Drawn on every surface that draws a tile — the cockpit, the board, and a
+ * guest — because a redaction that only applied to some of them would be worse
+ * than none: it would look like it was working.
+ */
+function drawRedactions(
+  ctx: CanvasRenderingContext2D,
+  tile: Tile,
+  body: Rect,
+  scale: number,
+  theme: Theme,
+) {
+  const redactions = redactionsOf(tile);
+  if (redactions.length === 0) return;
+
+  for (const redaction of redactions) {
+    const r = toBoardRect(tile, redaction, body);
+    ctx.save();
+    if (redaction.style === "blur") {
+      // Re-draw what is underneath through a blur, clipped to the region. Only
+      // honest for tidying, and the interface says so: blur is reversible.
+      ctx.beginPath();
+      ctx.rect(r.x, r.y, r.w, r.h);
+      ctx.clip();
+      ctx.filter = `blur(${Math.max(6, Math.min(r.w, r.h) * 0.12)}px)`;
+      ctx.drawImage(ctx.canvas, 0, 0);
+      ctx.filter = "none";
+    } else {
+      ctx.fillStyle = theme.dark ? "#0b0d12" : "#1e2329";
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      // A faint diagonal, so a blackout reads as deliberate rather than as a
+      // tile that failed to load.
+      ctx.strokeStyle = "rgba(255,255,255,0.07)";
+      ctx.lineWidth = 1.5 / scale;
+      ctx.beginPath();
+      const step = 14 / scale;
+      for (let x = r.x - r.h; x < r.x + r.w; x += step) {
+        ctx.moveTo(x, r.y + r.h);
+        ctx.lineTo(x + r.h, r.y);
+      }
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(r.x, r.y, r.w, r.h);
+      ctx.clip();
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
 }
 
 export const HANDLE_SIZE = 9;

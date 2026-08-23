@@ -10,8 +10,10 @@
 import { useEffect, useState } from "react";
 import * as api from "../../core/api";
 import {
+  CloseIcon,
   CopyIcon,
   ExpandIcon,
+  HideIcon,
   EyeIcon,
   LockedIcon,
   StageIcon,
@@ -39,6 +41,7 @@ import {
   cx,
 } from "../../ui/primitives";
 import type { CameraTile, NoteTile, PdfTile, SourceTile, Tile, VideoTile, WebTile } from "../../core/types";
+import { redactionsOf } from "../../core/redact";
 import { MIN_STAGE, stageLabel } from "../../core/stage";
 import { selectedTiles, useActions, useStore, webLabels } from "../store";
 import { useShallow } from "zustand/react/shallow";
@@ -143,6 +146,7 @@ function TileInspector({ tile }: { tile: Tile }) {
 
       <FrameGroup tile={tile} />
       <AppearanceGroup tile={tile} />
+      {tile.kind !== "note" && <PrivacyGroup tile={tile} />}
 
       <footer className="inspector__foot">
         <IconButton icon={CopyIcon} label="Duplicate" onClick={() => store.duplicateSelection()} />
@@ -265,6 +269,67 @@ function FrameGroup({ tile }: { tile: Tile }) {
         checked={tile.fit === "cover"}
         onChange={(on) => set({ fit: on ? "cover" : "contain" })}
       />
+    </Group>
+  );
+}
+
+/**
+ * The parts of this tile nobody else sees.
+ *
+ * Listed rather than only drawn, because a promise you cannot audit is not
+ * worth much: before a call you want to read the list and know.
+ */
+function PrivacyGroup({ tile }: { tile: Tile }) {
+  const store = useActions();
+  const redacting = useStore((s) => s.redacting);
+  const regions = redactionsOf(tile);
+
+  return (
+    <Group title="Never shared">
+      {regions.length === 0 ? (
+        <p className="inspector__note">
+          Nothing on this tile is hidden. Draw over a part of it and that part
+          stays out of the output — on the board, for every guest, at every zoom.
+        </p>
+      ) : (
+        <ul className="redactions">
+          {regions.map((region) => (
+            <li key={region.id}>
+              <span className={cx("redactions__swatch", region.style === "blur" && "is-blur")} />
+              <span className="redactions__label">{region.label}</span>
+              <Badge tone={region.style === "blur" ? "neutral" : "success"}>
+                {region.style === "blur" ? "blurred" : "hidden"}
+              </Badge>
+              <IconButton
+                icon={CloseIcon}
+                label={`Stop hiding ${region.label}`}
+                onClick={() => store.removeRedaction(tile.id, region.id)}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="btn-row">
+        <Button
+          block
+          tone={redacting ? "primary" : "secondary"}
+          icon={HideIcon}
+          onClick={() => store.setRedacting(!redacting)}
+        >
+          {redacting ? "Drawing…" : "Hide a part"}
+        </Button>
+        {regions.length > 0 && (
+          <Button block onClick={() => store.clearRedactions(tile.id)}>
+            Show it all
+          </Button>
+        )}
+      </div>
+      {regions.some((r) => r.style === "blur") && (
+        <p className="inspector__note">
+          Blur is for tidiness, not secrecy — it can be undone from enough
+          frames. Use hidden for anything that actually matters.
+        </p>
+      )}
     </Group>
   );
 }

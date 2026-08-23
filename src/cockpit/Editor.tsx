@@ -49,6 +49,7 @@ type Drag =
       from: Vec2;
     }
   | { kind: "ink"; points: number[] }
+  | { kind: "redact"; tileId: string; from: Vec2; to: Vec2 }
   | { kind: "stage-move"; from: Vec2; original: Rect; moved: boolean }
   | { kind: "stage-resize"; handle: HandleName; original: Rect; from: Vec2 };
 
@@ -140,6 +141,15 @@ export function Editor({
       pool?.sync(state.doc, scale / dpr);
 
       const drag = dragRef.current;
+      const redacting =
+        drag.kind === "redact"
+          ? {
+              x: Math.min(drag.from.x, drag.to.x),
+              y: Math.min(drag.from.y, drag.to.y),
+              w: Math.abs(drag.to.x - drag.from.x),
+              h: Math.abs(drag.to.y - drag.from.y),
+            }
+          : null;
       const marquee =
         drag.kind === "marquee"
           ? {
@@ -193,6 +203,7 @@ export function Editor({
           guides: guidesRef.current,
           showGrid: state.doc.showGrid,
           marquee,
+          redacting,
           isPrivate: state.isPrivate,
           hoverTileId: state.hover,
         },
@@ -305,6 +316,19 @@ export function Editor({
       return;
     }
 
+    // Drawing a never-shared rectangle beats every other pointer job while it
+    // is armed: it is a deliberate mode the operator turned on.
+    if (state.redacting) {
+      const target = tileAt(state.doc.tiles, point, true);
+      if (target) {
+        dragRef.current = { kind: "redact", tileId: target.id, from: point, to: point };
+        state.select([target.id]);
+      } else {
+        state.toast("drag over a tile", "warn");
+      }
+      return;
+    }
+
     if (state.ink.tool) {
       dragRef.current = { kind: "ink", points: [point.x, point.y] };
       return;
@@ -392,7 +416,17 @@ export function Editor({
       } else {
         const hit = tileAt(state.doc.tiles, point);
         state.setHover(hit?.id ?? null);
-        setCursor(spaceRef.current ? "grab" : state.ink.tool ? "crosshair" : hit ? "move" : "default");
+        setCursor(
+          state.redacting
+            ? "crosshair"
+            : spaceRef.current
+              ? "grab"
+              : state.ink.tool
+                ? "crosshair"
+                : hit
+                  ? "move"
+                  : "default",
+        );
       }
       return;
     }
@@ -461,6 +495,11 @@ export function Editor({
           ...d,
           tiles: d.tiles.map((t) => (t.id === drag.tileId ? { ...t, ...next } : t)),
         }), { history: false });
+        break;
+      }
+      case "redact": {
+        dragRef.current = { ...drag, to: point };
+        dirtyRef.current = true;
         break;
       }
       case "stage-move": {
@@ -543,6 +582,16 @@ export function Editor({
       drag.kind === "stage-resize";
     if (mutated) commitHistory(beforeDragRef.current);
     beforeDragRef.current = null;
+
+    if (drag.kind === "redact") {
+      const rect: Rect = {
+        x: Math.min(drag.from.x, drag.to.x),
+        y: Math.min(drag.from.y, drag.to.y),
+        w: Math.abs(drag.to.x - drag.from.x),
+        h: Math.abs(drag.to.y - drag.from.y),
+      };
+      if (rect.w > 2 && rect.h > 2) state.addRedaction(drag.tileId, rect);
+    }
 
     if (drag.kind === "ink" && state.ink.tool && drag.points.length >= 4) {
       const stroke: Stroke = {

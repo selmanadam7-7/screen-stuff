@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { emptyBoard, makeNoteTile } from "../src/core/doc";
+import { emptyBoard, makeNoteTile, makeSourceTile } from "../src/core/doc";
 import { renderBoard, HANDLE_SIZE } from "../src/core/render";
 import { stageTabFor } from "../src/core/stage";
 import type { BoardDoc } from "../src/core/types";
@@ -138,5 +138,58 @@ describe("drawing the stage", () => {
     const radius = arcs(selected.calls)[0].args[2] as number;
     const px = VIEW.w / 1200;
     expect(radius).toBeCloseTo((HANDLE_SIZE * px) / 2);
+  });
+});
+
+describe("never-shared regions", () => {
+  const doc = emptyBoard();
+
+  function withRedactions(style: "solid" | "blur") {
+    const tile = {
+      ...makeSourceTile("monitor:1", { x: 0, y: 0, w: 1200, h: 675 }),
+      redactions: [{ id: "r1", x: 0.6, y: 0, w: 0.4, h: 0.2, style, label: "the top right" }],
+    } as unknown as BoardDoc["tiles"][number];
+    return { ...doc, tiles: [tile] };
+  }
+
+  it("paints over the region on the board, where there is no chrome at all", () => {
+    const { ctx, calls } = recorder();
+    renderBoard({
+      ctx,
+      width: 1200,
+      height: 675,
+      view: doc.frame,
+      doc: withRedactions("solid"),
+      media: { resolve: () => null },
+      now: 0,
+      // No chrome: this is the audience's copy.
+    });
+    // A filled rectangle over the top-right fifth of the tile. Coordinates are
+    // board units, and the region sits inside the tile's body, below its bar.
+    const covers = calls.filter(
+      (c) =>
+        c.name === "fillRect" &&
+        Math.abs((c.args[0] as number) - 720) < 2 &&
+        Math.abs((c.args[2] as number) - 480) < 2,
+    );
+    expect(covers.length, "the audience's copy must be covered too").toBeGreaterThan(0);
+  });
+
+  it("re-draws through a blur for the tidying style", () => {
+    const { calls } = draw(withRedactions("blur"), undefined);
+    const blurred = calls.filter((c) => c.name === "set:filter" && String(c.args[0]).startsWith("blur"));
+    expect(blurred.length).toBeGreaterThan(0);
+  });
+
+  it("draws nothing extra when the same tile has no regions", () => {
+    const plain = {
+      ...doc,
+      tiles: [makeSourceTile("monitor:1", { x: 0, y: 0, w: 1200, h: 675 })],
+    } as BoardDoc;
+    const without = draw(plain, undefined).calls.filter((c) => c.name === "fillRect").length;
+    const with_ = draw(withRedactions("solid"), undefined).calls.filter(
+      (c) => c.name === "fillRect",
+    ).length;
+    expect(with_).toBeGreaterThan(without);
   });
 });

@@ -21,6 +21,7 @@ import {
   zoomAround,
 } from "../core/geometry";
 import type { AutoFrameMode, AutoFrameTarget } from "../core/autoframe";
+import { describeRedaction, toTileFraction } from "../core/redact";
 import {
   ViewHistory,
   fitView,
@@ -129,6 +130,8 @@ export interface CockpitState {
   autoFrame: AutoFrameMode;
   /** What auto-framing is currently holding the shot on, for the readout. */
   autoFrameOn: string | null;
+  /** True while the operator is drawing a never-shared rectangle. */
+  redacting: boolean;
   /** Space-to-pan latched on from the toolbar rather than held down. */
   panMode: boolean;
   /** The transient line at the bottom of the cockpit. */
@@ -201,6 +204,11 @@ export interface Actions {
   sceneForKey(key: string): Scene | undefined;
 
   setInk(patch: Partial<InkSettings>): void;
+  /** Arm the tool that draws a never-shared rectangle on a tile. */
+  setRedacting(on: boolean): void;
+  addRedaction(tileId: string, rect: Rect, style?: "solid" | "blur"): void;
+  removeRedaction(tileId: string, id: string): void;
+  clearRedactions(tileId: string): void;
   commitStroke(stroke: Stroke): void;
   clearInk(): void;
 
@@ -285,6 +293,7 @@ export const useStore = create<Store>((set, get) => ({
   look: "pure-white",
   autoFrame: "off",
   autoFrameOn: null,
+  redacting: false,
   panMode: false,
   notice: null,
 
@@ -765,6 +774,38 @@ export const useStore = create<Store>((set, get) => ({
 
   setInk(patch) {
     set({ ink: { ...get().ink, ...patch } });
+  },
+
+  setRedacting(on) {
+    set({ redacting: on, panMode: false });
+    if (on) {
+      set({ ink: { ...get().ink, tool: null } });
+      get().toast("drag over the part nobody should see");
+    }
+  },
+
+  addRedaction(tileId, rect, style = "solid") {
+    const tile = doc.getTile(get().doc, tileId);
+    if (!tile) return;
+    const fraction = toTileFraction(tile, rect);
+    if (!fraction) return;
+    get().mutate((d) =>
+      doc.addRedaction(d, tileId, {
+        id: doc.newId("r"),
+        ...fraction,
+        style,
+        label: describeRedaction(fraction),
+      }),
+    );
+    get().toast(style === "blur" ? "blurred in the output" : "hidden from the output");
+  },
+
+  removeRedaction(tileId, id) {
+    get().mutate((d) => doc.removeRedaction(d, tileId, id));
+  },
+
+  clearRedactions(tileId) {
+    get().mutate((d) => doc.clearRedactions(d, tileId));
   },
 
   commitStroke(stroke) {

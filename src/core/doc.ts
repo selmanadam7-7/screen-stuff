@@ -16,6 +16,7 @@ import {
   rectEquals,
   tileRect,
 } from "./geometry";
+import { redactionsOf, type Redaction } from "./redact";
 import { normaliseStage } from "./stage";
 import type {
   BoardDoc,
@@ -332,6 +333,25 @@ export function placeInFrame(doc: BoardDoc, w: number, h: number): { x: number; 
   return { x: doc.frame.x + (doc.frame.w - w) / 2, y: doc.frame.y + (doc.frame.h - h) / 2 };
 }
 
+/** Cover a part of a tile, permanently, in every output. */
+export function addRedaction(doc: BoardDoc, tileId: string, redaction: Redaction): BoardDoc {
+  return updateTile(doc, tileId, {
+    redactions: [...redactionsOf(getTile(doc, tileId) ?? ({} as Tile)), redaction],
+  } as Partial<Tile>);
+}
+
+export function removeRedaction(doc: BoardDoc, tileId: string, id: string): BoardDoc {
+  const tile = getTile(doc, tileId);
+  if (!tile) return doc;
+  return updateTile(doc, tileId, {
+    redactions: redactionsOf(tile).filter((r) => r.id !== id),
+  } as Partial<Tile>);
+}
+
+export function clearRedactions(doc: BoardDoc, tileId: string): BoardDoc {
+  return updateTile(doc, tileId, { redactions: [] } as Partial<Tile>);
+}
+
 export function setAspect(doc: BoardDoc, aspect: number): BoardDoc {
   return { ...doc, aspect, frame: fitAspect(doc.frame, aspect) };
 }
@@ -447,6 +467,18 @@ export function reviveBoard(raw: unknown, fallbackName = "Recovered board"): Boa
         rotation: Number.isFinite(t.rotation) ? t.rotation : 0,
         radius: Number.isFinite(t.radius) ? t.radius : 8,
         label: typeof t.label === "string" ? t.label : "",
+        // A redaction that failed to load would silently un-hide something, so
+        // anything malformed is dropped rather than guessed at.
+        ...(Array.isArray((t as { redactions?: unknown }).redactions)
+          ? {
+              redactions: ((t as { redactions: unknown[] }).redactions as Redaction[]).filter(
+                (r) =>
+                  r &&
+                  typeof r.id === "string" &&
+                  [r.x, r.y, r.w, r.h].every((v) => typeof v === "number" && v >= 0 && v <= 1),
+              ),
+            }
+          : {}),
         fit: t.fit === "cover" ? "cover" : "contain",
         // Boards saved before camera feeds existed have no source on their
         // camera tiles; deriving it on load costs nothing and fixes them.

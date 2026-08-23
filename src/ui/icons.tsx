@@ -31,6 +31,7 @@ import {
   Cursor,
   Download,
   Eye,
+  EyeClosed,
   File,
   Filter,
   Folder,
@@ -149,6 +150,8 @@ export const MaximizeIcon = Maximize as Icon;
 export const LockedIcon = Lock as Icon;
 export const UnlockedIcon = LockOpen as Icon;
 export const EyeIcon = Eye as Icon;
+/** A part of a tile the audience never sees. */
+export const HideIcon = EyeClosed as Icon;
 export const RecordIcon = Record as Icon;
 export const PlayIcon = Play as Icon;
 export const MicIcon = Mic as Icon;

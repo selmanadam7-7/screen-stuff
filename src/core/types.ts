@@ -8,6 +8,8 @@
  * what makes everything outside the stage private without any extra machinery.
  */
 
+import type { Redaction } from "./redact";
+
 export type Rect = { x: number; y: number; w: number; h: number };
 export type Vec2 = { x: number; y: number };
 
@@ -38,6 +40,13 @@ export interface TileBase {
   label: string;
   /** Drawn behind the tile so a light source on a dark board still reads. */
   shadow: boolean;
+  /**
+   * Parts of this tile that never reach the audience.
+   *
+   * Stored as fractions of the tile so they stay put when it is moved, resized
+   * or re-tuned to a different capture resolution. See `core/redact.ts`.
+   */
+  redactions?: Redaction[];
 }
 
 export interface SourceTile extends TileBase {
