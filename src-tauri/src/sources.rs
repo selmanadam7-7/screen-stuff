@@ -553,16 +553,16 @@ mod platform {
         best.map(|(_, id)| id)
     }
 
-    /// Whether a mouse button is down *right now*.
-    ///
-    /// Declared here because the core-graphics crate does not wrap it, and the
-    /// alternative — reading it off a synthesised event — answers a different
-    /// question. This is the exact counterpart of the Windows side's
-    /// GetAsyncKeyState: the state of the button now, not whether it has been
-    /// pressed since anyone last asked.
-    ///
-    /// The framework is already linked by core-graphics; this only names one
-    /// more function in it.
+    // Whether a mouse button is down *right now*.
+    //
+    // Declared here because the core-graphics crate does not wrap it, and the
+    // alternative — reading it off a synthesised event — answers a different
+    // question. This is the exact counterpart of the Windows side's
+    // GetAsyncKeyState: the state of the button now, not whether it has been
+    // pressed since anyone last asked.
+    //
+    // Plain comments, not doc comments: rustdoc does not document extern
+    // blocks, so `///` here is a warning rather than documentation.
     #[link(name = "CoreGraphics", kind = "framework")]
     extern "C" {
         fn CGEventSourceButtonState(state_id: i32, button: u32) -> bool;

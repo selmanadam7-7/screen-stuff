@@ -102,7 +102,7 @@ pub fn start_session(root: &SourceId, key: String) -> Result<Arc<Session>> {
             // Source ids are 1-based, to match the way the Windows side numbers
             // displays and the way people count their own monitors.
             let display = displays
-                .get(index.saturating_sub(1) as usize)
+                .get(index.saturating_sub(1))
                 .ok_or_else(|| anyhow!("display {index} is not available"))?;
             let filter = SCContentFilter::create().with_display(display).build();
             (filter, display.width(), display.height())
