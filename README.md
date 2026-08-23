@@ -351,6 +351,26 @@ What that costs, said plainly:
   encrypted, and someone else's machine is carrying them. If that matters for a
   particular call, stay on the local option.
 
+## Everyone else in the room
+
+A guest can already draw on the board, which is the heavyweight way to point at
+something. Most of the time nobody wants to leave a mark — they want to say
+"that line", or "yes", and have it gone a moment later.
+
+So every guest gets a **named cursor** on the board, and a row of six
+**reactions** that float up and fade. Both are ephemeral by construction:
+nothing here ever enters the document, so none of it can end up in a saved
+board, in the undo stack, or on the audience's screen by accident.
+
+Reactions are a closed list, checked on the server. A guest is a stranger
+holding a link, and whatever they send is drawn on the host's board.
+`scripts/check-presence.mjs` sends a running server every reaction that is on
+the list, several that are not, and a couple of malformed messages, and checks
+the connection is still standing afterwards.
+
+Cursor colours come from hashing the name, so the same person is the same colour
+twice, on every machine.
+
 ## Boards
 
 Boards save whole — layout, tiles, ink, scenes, hotkeys — as JSON under
@@ -463,8 +483,8 @@ node scripts/make-brand-component.mjs  # logo SVG -> the React mark
 ## Tests
 
 ```
-cargo test    70 passing   engine, feeds, protocol, sources, store, guests, tunnel
-vitest       310 passing   geometry, document, stage, auto-framing, redaction, pointer, overlays, layouts, voice, replay, resize, wire, render, frames, design
+cargo test    74 passing   engine, feeds, protocol, sources, store, guests, tunnel
+vitest       326 passing   geometry, document, stage, auto-framing, redaction, pointer, overlays, layouts, voice, replay, resize, wire, render, frames, design
 ```
 
 Plus harnesses that exercise the real thing rather than a mock: `probe-frame`

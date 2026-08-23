@@ -27,6 +27,12 @@ import {
 } from "../core/geometry";
 import type { BoardDoc, Rect, Stroke, Tile, Vec2 } from "../core/types";
 import { CURSOR_FOR_HANDLE, resizeRect, type HandleName } from "../core/resize";
+import {
+  REACTION_GLYPH,
+  colourFor,
+  reactionProgress,
+  type Presence,
+} from "../core/presence";
 import { resizeStage, stageHandleAt, stageHit, stageLabel, stageTabFor } from "../core/stage";
 import { useStore } from "./store";
 import { Menu, type MenuEntry } from "../ui/primitives";
@@ -58,8 +64,11 @@ type Drag =
 export function Editor({
   client,
   onPool,
+  presence,
 }: {
   client: FrameClient | null;
+  /** Where the guests are pointing, and what they just said. */
+  presence?: Presence;
   /**
    * Hands the media pool up to the shell.
    *
@@ -185,6 +194,23 @@ export function Editor({
         doc: liveInk ? { ...state.doc, strokes: [...state.doc.strokes, liveInk] } : state.doc,
         media: pool ?? { resolve: () => null },
         now,
+        presence: presence
+          ? {
+              cursors: presence.liveCursors(now).map((c) => ({
+                x: c.x,
+                y: c.y,
+                name: c.name,
+                colour: colourFor(c.name),
+              })),
+              reactions: presence.liveReactions(now).map((r) => ({
+                x: state.doc.frame.x + state.doc.frame.w * 0.5,
+                y: state.doc.frame.y + state.doc.frame.h * 0.82,
+                glyph: REACTION_GLYPH[r.kind],
+                name: r.name,
+                progress: reactionProgress(r, now),
+              })),
+            }
+          : null,
         chrome: {
           selection: state.selection,
           // Always the live audience rectangle, so the outline is the truth

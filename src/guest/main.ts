@@ -10,6 +10,7 @@
 import "../styles/guest.css";
 import { FrameClient } from "../core/frames";
 import { MediaPool } from "../core/media";
+import { REACTIONS, REACTION_GLYPH } from "../core/presence";
 import { renderBoard } from "../core/render";
 import { emptyBoard, expireStrokes, newId, reviveBoard } from "../core/doc";
 import { clamp, fitAspect, screenToBoard, simplifyPoints, zoomAround } from "../core/geometry";
@@ -48,6 +49,7 @@ root.innerHTML = `
     <span class="guest-name" id="guest-name"></span>
     <span class="guest-spacer"></span>
     <div class="guest-tools" id="guest-tools"></div>
+    <div class="guest-reactions" id="guest-reactions"></div>
     <button class="guest-btn" id="guest-follow">Follow the host</button>
   </div>
   <div class="guest-toast" id="guest-toast"></div>
@@ -69,6 +71,7 @@ const pip = document.getElementById("guest-pip")!;
 const toast = document.getElementById("guest-toast")!;
 const followButton = document.getElementById("guest-follow") as HTMLButtonElement;
 const toolbar = document.getElementById("guest-tools")!;
+const reactionBar = document.getElementById("guest-reactions")!;
 
 // The token is the last path segment: /g/<token>
 const token = window.location.pathname.split("/").filter(Boolean).pop() ?? "";
@@ -217,6 +220,27 @@ const startRoaming = () => {
 
 let panFrom: Vec2 | null = null;
 
+/**
+ * Six things a guest can say without drawing on anything.
+ *
+ * A closed set, matching the list the server will accept — a guest is a
+ * stranger holding a link, and anything free-text would end up drawn on the
+ * host's board.
+ */
+for (const kind of REACTIONS) {
+  const button = document.createElement("button");
+  button.className = "guest-react";
+  button.textContent = REACTION_GLYPH[kind];
+  button.title = kind;
+  button.setAttribute("aria-label", `React: ${kind}`);
+  button.addEventListener("click", () => {
+    send({ t: "reaction", reaction: kind });
+    button.classList.add("is-sent");
+    window.setTimeout(() => button.classList.remove("is-sent"), 400);
+  });
+  reactionBar.appendChild(button);
+}
+
 canvas.addEventListener("pointerdown", (event) => {
   canvas.setPointerCapture(event.pointerId);
   if (state.tool && state.powers.draw && event.button === 0 && !event.shiftKey) {
@@ -227,7 +251,22 @@ canvas.addEventListener("pointerdown", (event) => {
   if (startRoaming()) panFrom = toBoard(event);
 });
 
+/**
+ * Where this guest is pointing, sent at a sensible rate.
+ *
+ * Throttled rather than sent per event: a pointermove fires on every pixel, and
+ * the host only needs enough to follow a hand.
+ */
+let lastPointerSent = 0;
+function sendPointer(point: { x: number; y: number }) {
+  const now = performance.now();
+  if (now - lastPointerSent < 60) return;
+  lastPointerSent = now;
+  send({ t: "pointer", x: point.x, y: point.y });
+}
+
 canvas.addEventListener("pointermove", (event) => {
+  sendPointer(toBoard(event));
   if (state.drawing) {
     const point = toBoard(event);
     state.drawing =

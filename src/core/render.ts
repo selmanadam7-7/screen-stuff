@@ -105,6 +105,16 @@ export interface RenderInput {
    * there, and the windows it was showing may since have closed.
    */
   replay?: CanvasImageSource | null;
+  /**
+   * Where everyone else is pointing, and what they just said.
+   *
+   * Drawn on the cockpit and on the board alike: the point of a guest pointing
+   * at something is that everyone can see what they mean.
+   */
+  presence?: {
+    cursors: Array<{ x: number; y: number; name: string; colour: string }>;
+    reactions: Array<{ x: number; y: number; glyph: string; name: string; progress: number }>;
+  } | null;
 }
 
 /** Everything the chrome needs, derived from the tokens for the current look. */
@@ -168,6 +178,7 @@ export function renderBoard(input: RenderInput): void {
     ctx.restore();
   }
 
+  if (input.presence) drawPresence(ctx, input.presence, scale, theme);
   if (input.pointer) drawPointer(ctx, input.pointer, scale, theme);
   // On the stage, over everything, under only the operator's own chrome.
   drawOverlays(ctx, doc, scale, theme);
@@ -1041,6 +1052,73 @@ function drawOverlays(
       ctx.font = `450 ${nameSize * 0.62}px ${UI_FONT}`;
       ctx.fillText(third.role, box.x + spine + pad, box.y + box.h * 0.78);
     }
+    ctx.restore();
+  }
+}
+
+/**
+ * Guest cursors and reactions.
+ *
+ * A named arrow rather than a bare dot: on a board with three people on it,
+ * "someone is pointing there" is much less useful than "Aaron is pointing
+ * there", and the name costs one line of text.
+ */
+function drawPresence(
+  ctx: CanvasRenderingContext2D,
+  presence: NonNullable<RenderInput["presence"]>,
+  scale: number,
+  theme: Theme,
+) {
+  const px = 1 / scale;
+
+  for (const cursor of presence.cursors) {
+    ctx.save();
+    // A small arrow, drawn as a path so it stays crisp at any zoom.
+    const s = 14 * px;
+    ctx.translate(cursor.x, cursor.y);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, s);
+    ctx.lineTo(s * 0.29, s * 0.76);
+    ctx.lineTo(s * 0.52, s * 1.22);
+    ctx.lineTo(s * 0.74, s * 1.12);
+    ctx.lineTo(s * 0.51, s * 0.66);
+    ctx.lineTo(s * 0.86, s * 0.62);
+    ctx.closePath();
+    ctx.fillStyle = cursor.colour;
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 1.4 * px;
+    ctx.fill();
+    ctx.stroke();
+
+    const label = cursor.name;
+    ctx.font = `600 ${11 * px}px ${UI_FONT}`;
+    const width = ctx.measureText(label).width + 12 * px;
+    const height = 17 * px;
+    ctx.beginPath();
+    ctx.roundRect(s * 0.9, s * 1.05, width, height, height / 2);
+    ctx.fillStyle = cursor.colour;
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, s * 0.9 + 6 * px, s * 1.05 + height / 2);
+    ctx.restore();
+  }
+
+  for (const reaction of presence.reactions) {
+    ctx.save();
+    // Floats up and fades, so several at once read as a stream rather than a
+    // pile.
+    const rise = reaction.progress * 60 * px;
+    ctx.globalAlpha = 1 - reaction.progress * reaction.progress;
+    ctx.font = `${30 * px}px ${UI_FONT}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(reaction.glyph, reaction.x, reaction.y - rise);
+    ctx.font = `600 ${10 * px}px ${UI_FONT}`;
+    ctx.fillStyle = theme.ink2;
+    ctx.fillText(reaction.name, reaction.x, reaction.y - rise + 24 * px);
     ctx.restore();
   }
 }

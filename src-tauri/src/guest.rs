@@ -76,6 +76,10 @@ pub enum ToHost {
     GuestInk { id: u64, stroke: serde_json::Value },
     GuestFile { id: u64, name: String, mime: String, data_url: String },
     GuestView { id: u64, view: serde_json::Value },
+    /// Where a guest is pointing, in board space.
+    GuestPointer { id: u64, x: f64, y: f64 },
+    /// A guest reacting. One of a small fixed set, never arbitrary text.
+    GuestReaction { id: u64, reaction: String },
 }
 
 /// What a guest may send.
@@ -84,6 +88,10 @@ pub enum ToHost {
 pub enum FromGuest {
     Hello { name: String },
     Ink { stroke: serde_json::Value },
+    /// Where this guest is pointing. Sent often; carries no other state.
+    Pointer { x: f64, y: f64 },
+    /// A reaction. Validated against a fixed list on arrival.
+    Reaction { reaction: String },
     View { view: serde_json::Value },
     File { name: String, mime: String, data_url: String },
     Subscribe { stream_id: u32, source: String, width: u32, height: u32, #[serde(default)] fps: u32, #[serde(default)] quality: u8 },
@@ -279,6 +287,16 @@ fn sanitise_name(raw: &str, id: u64) -> String {
     } else {
         cleaned
     }
+}
+
+/// Everything a guest is allowed to react with.
+///
+/// A closed list rather than free text: a guest is a stranger holding a link,
+/// and anything they send ends up drawn on the host's board.
+pub const REACTIONS: [&str; 6] = ["yes", "no", "wow", "clap", "think", "here"];
+
+pub fn is_reaction(value: &str) -> bool {
+    REACTIONS.contains(&value)
 }
 
 /// The secret in a guest link.

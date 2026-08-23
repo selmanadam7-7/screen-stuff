@@ -221,3 +221,36 @@
     gap: 6px;
   }
 }
+
+/* --- saying something without drawing on anything -------------------------- */
+
+.guest-reactions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.guest-react {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-md);
+  font-size: 16px;
+  line-height: 1;
+  background: none;
+  border: 1px solid transparent;
+  transition:
+    background var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+.guest-react:hover {
+  background: var(--panel-hover);
+}
+.guest-react.is-sent {
+  background: var(--accent-tint);
+  border-color: var(--accent-line);
+  transform: translateY(-3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .guest-react.is-sent {
+    transform: none;
+  }
+}

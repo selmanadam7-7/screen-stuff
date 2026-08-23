@@ -7,7 +7,8 @@
 
 use crate::capture::{start_stream, Stream, StreamEvent, StreamSpec};
 use crate::guest::{
-    guest_token, lan_address, FromGuest, GuestHub, RunningGuestServer, ToGuest, ToHost,
+    guest_token, is_reaction, lan_address, FromGuest, GuestHub, RunningGuestServer, ToGuest,
+    ToHost,
     MAX_GUEST_FILE_BYTES,
 };
 use crate::protocol::{encode_frame, FLAG_GEOMETRY_CHANGED};
@@ -296,6 +297,23 @@ async fn handle_guest_message(
 
         FromGuest::Unsubscribe { stream_id } => {
             streams.remove(&stream_id);
+            Ok(())
+        }
+
+        FromGuest::Pointer { x, y } => {
+            // Not stored anywhere. A pointer is only interesting while it is
+            // moving, and keeping the last position of everyone who ever joined
+            // would be a small pile of nothing.
+            if hub.powers().draw {
+                hub.tell_host(ToHost::GuestPointer { id: guest_id, x, y });
+            }
+            Ok(())
+        }
+
+        FromGuest::Reaction { reaction } => {
+            if is_reaction(&reaction) {
+                hub.tell_host(ToHost::GuestReaction { id: guest_id, reaction });
+            }
             Ok(())
         }
 

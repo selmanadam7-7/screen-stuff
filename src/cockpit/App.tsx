@@ -7,6 +7,7 @@ import { AutoFramer, targetFor, type AutoFrameMode } from "../core/autoframe";
 import { cursorOnBoard, punchRect } from "../core/pointer";
 import { SpeechGate, approach } from "../core/voice";
 import { MicLevel } from "./mic";
+import { Presence } from "../core/presence";
 import { ReplayCapture } from "./replayCapture";
 import { isTyping } from "./Editor";
 import type { Stroke } from "../core/types";
@@ -38,6 +39,8 @@ type GuestEvent =
   | { t: "guest_left"; id: number }
   | { t: "guest_view"; id: number; view: unknown }
   | { t: "guest_ink"; id: number; stroke: Stroke }
+  | { t: "guest_pointer"; id: number; x: number; y: number }
+  | { t: "guest_reaction"; id: number; reaction: string }
   | { t: "guest_file"; id: number; name: string; mime: string; data_url: string };
 
 export function App() {
@@ -67,6 +70,7 @@ function Cockpit() {
   const autoCamera = useStore((s) => s.autoCamera);
   const replayOn = useStore((s) => s.replayOn);
   const replay = useMemo(() => new ReplayCapture(), []);
+  const presence = useMemo(() => new Presence(), []);
   const poolRef = useRef<MediaPool | null>(null);
   const [punchKeyHeld, setPunchKeyHeld] = useState(false);
   const store = useActions();
@@ -282,12 +286,25 @@ function Cockpit() {
     const unlisteners: Array<() => void> = [];
     void onBoardStatus((status) => store.setStatus(status)).then((un) => unlisteners.push(un));
 
+    // A guest's name comes with the roster, not with each pointer move.
+    const nameOfGuest = (id: number) =>
+      useStore.getState().guests.guests.find((g) => g.id === id)?.name ?? "Guest";
+
     void listenFor<GuestEvent>("sd:guest-event", (event) => {
       switch (event.t) {
         case "guest_joined":
-        case "guest_left":
         case "guest_view":
           void store.refreshGuests();
+          break;
+        case "guest_left":
+          presence.remove(event.id);
+          void store.refreshGuests();
+          break;
+        case "guest_pointer":
+          presence.pointer(event.id, nameOfGuest(event.id), event.x, event.y, performance.now());
+          break;
+        case "guest_reaction":
+          presence.react(event.id, nameOfGuest(event.id), event.reaction, performance.now());
           break;
         case "guest_ink":
           store.applyGuestInk(event.stroke);
@@ -423,7 +440,7 @@ function Cockpit() {
         <main className="app__center">
           {panel === "board" ? (
             <>
-              <Editor client={client} onPool={handlePool} />
+              <Editor client={client} onPool={handlePool} presence={presence} />
               <div className="canvas-dock canvas-dock--top">
                 <div className="canvas-dock__mid">
                   <Toolbar
