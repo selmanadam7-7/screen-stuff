@@ -22,7 +22,7 @@ jobs:
           version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:web
@@ -38,7 +38,11 @@ jobs:
         include:
           - os: windows-latest
             name: windows
-          - os: macos-14
+          # macos-15, not 14: screencapturekit pulls in apple-metal, whose Swift
+          # bridge uses MTLResidencySet and MTLLogState. Those are Xcode 16 SDK
+          # types, and the 14 image ships Xcode 15 — the build fails in a
+          # dependency's Swift before it ever reaches our code.
+          - os: macos-15
             name: macos
     runs-on: ${{ matrix.os }}
     name: rust (${{ matrix.name }})
@@ -52,7 +56,21 @@ jobs:
           workspaces: src-tauri
           key: ${{ matrix.name }}
 
-      # Tauri needs these on Linux; on Windows and macOS the toolchain is enough.
+      # `tauri::generate_context!` reads frontendDist at compile time and fails
+      # if it is not there, so the Rust build genuinely depends on the web build
+      # having happened. Doing it for real rather than faking a dist directory:
+      # a context generated against an empty folder compiles and would ship an
+      # app with no interface in it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
       - name: Build
         working-directory: src-tauri
         run: cargo build --all-targets
