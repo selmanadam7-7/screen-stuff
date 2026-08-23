@@ -8,12 +8,15 @@
 import { useEffect, useRef, useState } from "react";
 import { contentBounds } from "../../core/doc";
 import { boundingRect, fitAspect } from "../../core/geometry";
+import { LAYOUTS, layoutsFor } from "../../core/layouts";
 import { CARD_PRESETS } from "../../core/overlays";
 import { homeView } from "../../core/stage";
 import {
   AddIcon,
   BackIcon,
   CardIcon,
+  LayoutIcon,
+  PreviewIcon,
   ExpandIcon,
   FollowIcon,
   ForwardIcon,
@@ -25,7 +28,7 @@ import {
   StageIcon,
   WindowIcon,
 } from "../../ui/icons";
-import { Button, IconButton, Menu, cx, useTooltip } from "../../ui/primitives";
+import { Button, IconButton, Menu, cx, useTooltip, type MenuEntry } from "../../ui/primitives";
 import { useActions, useStore } from "../store";
 
 /* ==========================================================================
@@ -139,11 +142,11 @@ export function SceneRail() {
 
       <span className="scene-rail__rule" />
 
-      <AutoFrameChip />
-
-      <PointerChip />
+      <DirectorMenu />
 
       <CardChip />
+
+      <PreviewChips />
 
       {spotlight && (
         <button className="scene-chip is-active" onClick={() => store.setSpotlight(null)}>
@@ -200,38 +203,58 @@ function SceneChip({ id, name, hotkey }: { id: string; name: string; hotkey: str
 }
 
 /**
- * Whether the shot follows the work.
+ * Everything you decide once, in one place.
  *
- * On the rail rather than buried in settings because it is a decision you make
- * during a call, not before one — and because the moment it does something
- * surprising you want the off switch in the same place you were already
- * looking.
+ * Following the work, showing the pointer and arranging tiles are all things
+ * you set before a call or change rarely. As separate chips they pushed the
+ * rail to three rows, which is the state where nothing on it is quick to find.
+ * The chips that remain are the ones you reach for mid-sentence.
  */
-function AutoFrameChip() {
+function DirectorMenu() {
   const mode = useStore((s) => s.autoFrame);
   const holding = useStore((s) => s.autoFrameOn);
+  const pointer = useStore((s) => s.spotlightCursor);
+  const count = useStore((s) => s.doc.tiles.filter((t) => !t.hidden).length);
+  const selected = useStore((s) => s.selection.length);
   const store = useActions();
   const [open, setOpen] = useState<{ x: number; y: number } | null>(null);
 
-  const label =
-    mode === "off" ? "Follow my work" : mode === "monitor" ? "Following screens" : "Following windows";
+  const active = mode !== "off" || pointer;
+  const summary =
+    mode === "monitor"
+      ? `Following screens${holding ? ` — ${holding}` : ""}`
+      : mode === "window"
+        ? `Following windows${holding ? ` — ${holding}` : ""}`
+        : pointer
+          ? "Pointer shown"
+          : "Director";
+
+  const usable = layoutsFor(selected || count);
+  const layoutEntries: MenuEntry[] =
+    count > 0
+      ? [
+          { separator: true },
+          ...LAYOUTS.filter((l) => usable.includes(l.kind)).map((l) => ({
+            label: l.label,
+            icon: LayoutIcon,
+            shortcut: l.hint,
+            onSelect: () => store.applyLayout(l.kind),
+          })),
+        ]
+      : [];
 
   return (
     <span className="scene-chip-wrap">
       <button
-        className={cx("scene-chip", mode !== "off" && "is-active")}
-        title={
-          mode === "off"
-            ? "Point the stage at whatever you are working in"
-            : `${label}${holding ? ` — on ${holding}` : ""}. Click to change.`
-        }
+        className={cx("scene-chip", active && "is-active")}
+        title="How the shot behaves: following your work, showing your pointer, arranging tiles"
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
           setOpen(open ? null : { x: r.left, y: r.top - 8 });
         }}
       >
         <FollowIcon size={13} aria-hidden />
-        {label}
+        {summary}
       </button>
       {open && (
         <Menu
@@ -242,15 +265,24 @@ function AutoFrameChip() {
             {
               label: "Follow the screen I work on",
               icon: ScreenIcon,
-              onSelect: () => store.setAutoFrame("monitor"),
+              checked: mode === "monitor",
+              onSelect: () => store.setAutoFrame(mode === "monitor" ? "off" : "monitor"),
             },
             {
               label: "Follow the window I work in",
               icon: WindowIcon,
-              onSelect: () => store.setAutoFrame("window"),
+              checked: mode === "window",
+              onSelect: () => store.setAutoFrame(mode === "window" ? "off" : "window"),
             },
             { separator: true },
-            { label: "Leave the stage alone", onSelect: () => store.setAutoFrame("off") },
+            {
+              label: "Show the audience my pointer",
+              icon: PointerIcon,
+              shortcut: "hold Z to punch in",
+              checked: pointer,
+              onSelect: () => store.setSpotlightCursor(!pointer),
+            },
+            ...layoutEntries,
           ]}
         />
       )}
@@ -258,31 +290,7 @@ function AutoFrameChip() {
   );
 }
 
-/**
- * Whether the audience can see where you are pointing.
- *
- * Zoomed out to four monitors, a real cursor is about two pixels in the output.
- * "It's right there" is the most repeated sentence on any screen share, and it
- * is the app's fault.
- */
-function PointerChip() {
-  const on = useStore((s) => s.spotlightCursor);
-  const store = useActions();
-  return (
-    <button
-      className={cx("scene-chip", on && "is-active")}
-      onClick={() => store.setSpotlightCursor(!on)}
-      title={
-        on
-          ? "They can see a ring where your pointer is. Hold Z to punch in on it."
-          : "Show the audience where you are pointing — and hold Z to punch in"
-      }
-    >
-      <PointerIcon size={13} aria-hidden />
-      {on ? "Pointer shown" : "Show my pointer"}
-    </button>
-  );
-}
+
 
 /**
  * What the audience sees instead of your screens.
@@ -336,6 +344,48 @@ function CardChip() {
     </span>
   );
 }
+
+/**
+ * The next shot, and the button that puts it on air.
+ *
+ * The broadcast idiom, and the thing the private board was always for: arrange
+ * the shot nobody can see yet, then cut to it in one press. Taking swaps them,
+ * so cutting back and forth between two shots is one key rather than a rebuild.
+ */
+function PreviewChips() {
+  const preview = useStore((s) => s.preview);
+  const store = useActions();
+
+  if (!preview) {
+    return (
+      <button
+        className="scene-chip"
+        onClick={() => store.openPreview()}
+        title="Arrange the next shot without anyone seeing it"
+      >
+        <PreviewIcon size={13} aria-hidden />
+        Set up next
+      </button>
+    );
+  }
+
+  return (
+    <span className="preview-chips">
+      <button
+        className="scene-chip is-preview"
+        onClick={() => store.closePreview()}
+        title="Throw the next shot away"
+      >
+        <PreviewIcon size={13} aria-hidden />
+        Next shot
+      </button>
+      <Button size="sm" tone="take" onClick={() => store.take()} title="Put it on air — T">
+        Take
+      </Button>
+    </span>
+  );
+}
+
 
 /* ==========================================================================
    Minimap

@@ -21,6 +21,7 @@ import {
   zoomAround,
 } from "../core/geometry";
 import type { AutoFrameMode, AutoFrameTarget } from "../core/autoframe";
+import { LAYOUTS, applyLayout, type LayoutKind } from "../core/layouts";
 import { cardFromPreset, type HoldingCard, type LowerThird } from "../core/overlays";
 import { describeRedaction, toTileFraction } from "../core/redact";
 import {
@@ -96,6 +97,15 @@ export interface CockpitState {
   frame: Rect;
   /** True when the stage itself is the current selection. */
   stageSelected: boolean;
+  /**
+   * The next shot, arranged off air.
+   *
+   * Runtime rather than document: it is a working state, and a board reopened
+   * tomorrow should not come with a half-built shot queued behind it.
+   */
+  preview: Rect | null;
+  /** True when the preview rectangle is what the pointer is editing. */
+  previewSelected: boolean;
   transition: "cut" | "fly";
   frameAnimStart: number | null;
   frameAnimFrom: Rect | null;
@@ -193,6 +203,14 @@ export interface Actions {
   toggleSpotlight(id: string): void;
 
   selectStage(on: boolean): void;
+  /** Start arranging the next shot, off air. */
+  openPreview(): void;
+  closePreview(): void;
+  setPreview(rect: Rect): void;
+  selectPreview(on: boolean): void;
+  /** Put the next shot on air, and leave the old one queued behind it. */
+  take(): void;
+  applyLayout(kind: LayoutKind): void;
   setStage(next: Rect, options?: { transition?: "cut" | "fly"; history?: boolean; force?: boolean }): void;
   setStageLocked(locked: boolean): void;
   /** Grow the stage until it holds everything on the board. */
@@ -289,6 +307,8 @@ export const useStore = create<Store>((set, get) => ({
   targetFrame: { ...initialDoc.frame },
   frame: { ...initialDoc.frame },
   stageSelected: false,
+  preview: null,
+  previewSelected: false,
   transition: "fly",
   frameAnimStart: null,
   frameAnimFrom: null,
@@ -657,6 +677,56 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   // --- the stage -----------------------------------------------------------
+
+  openPreview() {
+    const state = get();
+    if (state.preview) return;
+    // Starts as a copy of what is on air, nudged off it, so the first thing you
+    // do is adjust a real shot rather than draw one from nothing.
+    const stage = state.doc.frame;
+    const next = normaliseStage(
+      { x: stage.x + stage.w * 0.06, y: stage.y + stage.h * 0.06, w: stage.w, h: stage.h },
+      state.doc.aspect,
+    );
+    set({ preview: next, previewSelected: true, stageSelected: false });
+    get().jumpView(homeView(next, state.doc.aspect));
+    get().toast("arrange the next shot — nobody can see it yet");
+  },
+
+  closePreview() {
+    set({ preview: null, previewSelected: false });
+  },
+
+  setPreview(rect) {
+    set({ preview: normaliseStage(rect, get().doc.aspect) });
+  },
+
+  selectPreview(on) {
+    set({ previewSelected: on, stageSelected: on ? false : get().stageSelected });
+  },
+
+  take() {
+    const state = get();
+    if (!state.preview) return;
+    const wasOnAir = { ...state.doc.frame };
+    const next = state.preview;
+    // The old shot becomes the new preview. That is what makes cutting back and
+    // forth between two shots one key rather than a rebuild.
+    set({ preview: wasOnAir, previewSelected: false });
+    get().setStage(next, { force: true });
+    get().toast("taken");
+  },
+
+  applyLayout(kind) {
+    const state = get();
+    const ids =
+      state.selection.length > 0
+        ? state.selection
+        : state.doc.tiles.filter((t) => !t.hidden).map((t) => t.id);
+    if (ids.length === 0) return;
+    get().mutate((d) => applyLayout(d, ids, kind));
+    get().toast(LAYOUTS.find((l) => l.kind === kind)?.label ?? "arranged");
+  },
 
   selectStage(on) {
     set({ stageSelected: on, selection: on ? [] : get().selection });

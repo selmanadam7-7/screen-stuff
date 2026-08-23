@@ -61,6 +61,8 @@ export interface ChromeOptions {
   marquee?: Rect | null;
   /** Drawn while dragging out a part of a tile to hide. */
   redacting?: Rect | null;
+  /** The next shot, being arranged off air. Never drawn on the output. */
+  preview?: { rect: Rect; selected: boolean } | null;
   /** True when the audience has been held on the last shot. */
   isPrivate: boolean;
   hoverTileId?: string | null;
@@ -100,6 +102,8 @@ function chromeColors(theme: Theme) {
     handleEdge: theme.accent,
     tabText: theme.onAccent,
     guide: theme.danger,
+    /** The next shot. Never the accent: the accent means live. */
+    preview: theme.warning,
     hover: theme.ink3,
     // Always darkens: on a white canvas a light scrim is no scrim at all.
     scrim: theme.dark ? "rgba(6,8,12,0.55)" : "rgba(20,24,32,0.07)",
@@ -636,6 +640,47 @@ function drawChrome(
   const CHROME = chromeColors(theme);
 
   if (chrome.frame) drawStage(ctx, chrome, chrome.frame, scale, px, theme);
+
+  if (chrome.preview) {
+    const p = chrome.preview.rect;
+    ctx.save();
+    // Amber, not the accent: the accent means "this is live" everywhere else in
+    // the app, and the whole point of this rectangle is that it is not.
+    ctx.strokeStyle = CHROME.preview;
+    ctx.lineWidth = (chrome.preview.selected ? 3 : 2) * px;
+    ctx.setLineDash([12 * px, 7 * px]);
+    ctx.strokeRect(p.x, p.y, p.w, p.h);
+    ctx.restore();
+
+    const label = "Next";
+    const tab = stageTabFor(p, label, scale);
+    ctx.save();
+    ctx.fillStyle = CHROME.preview;
+    ctx.beginPath();
+    ctx.roundRect(tab.x, tab.y, tab.w, tab.h, Math.min(tab.h / 2.6, 6 / scale));
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `600 ${11.5 / scale}px ${UI_FONT}`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, tab.x + 11 / scale, tab.y + tab.h / 2);
+    ctx.restore();
+
+    if (chrome.preview.selected) {
+      const size = HANDLE_SIZE * px;
+      ctx.save();
+      ctx.fillStyle = CHROME.handle;
+      ctx.strokeStyle = CHROME.preview;
+      ctx.lineWidth = 1.5 * px;
+      for (const point of Object.values(stageHandles(p))) {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
 
   if (chrome.hoverTileId) {
     const tile = doc.tiles.find((t) => t.id === chrome.hoverTileId);

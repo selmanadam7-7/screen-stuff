@@ -101,6 +101,10 @@ export const FollowIcon = Crosshairs as Icon;
 export const PointerIcon = Cursor as Icon;
 /** A card held over the shot instead of the board. */
 export const CardIcon = Presentation as Icon;
+/** The shot being arranged off air, before it is taken. */
+export const PreviewIcon = Layers as Icon;
+/** Arranging tiles into a composed shot. */
+export const LayoutIcon = Grid as Icon;
 export const ScreenIcon = Monitor as Icon;
 export const DisplayIcon = Display as Icon;
 export const WindowIcon = Frame as Icon;

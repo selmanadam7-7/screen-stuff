@@ -208,6 +208,31 @@ rearrange, then **Bring them here** moves the stage to where you now are.
 In the cockpit everything outside the stage is dimmed and the stage is outlined
 and named — so what is on air is never a guess.
 
+## Preview and take
+
+**Set up next** opens a second rectangle that nobody can see. Arrange the shot
+in it — move it, resize it, rearrange tiles behind it — then **Take**, or press
+`T`, and it goes on air. Taking swaps them, so the shot that was live becomes
+the one queued behind, and cutting back and forth between two shots is one key
+rather than a rebuild.
+
+It is drawn in amber, never the accent, because the accent means live
+everywhere else in the app and the whole point of this rectangle is that it is
+not.
+
+This is what the private board was always for.
+
+## Arranging
+
+**Director → Even grid / Two up / Focus and strip / Picture in picture.** A grid
+says everything on screen matters equally, which is almost never true — usually
+one thing is what you are talking about and the rest is context.
+
+The first tile selected is the hero in every layout that has a hierarchy, so
+"make this the big one" is "select it first" and there is no extra concept to
+learn. Nothing here is a mode: the tiles stay tiles, and you can nudge any of
+them afterwards without it snapping back.
+
 ## Holding the shot
 
 **Hold the shot** on the scene rail covers the stage with a card — starting

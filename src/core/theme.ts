@@ -23,6 +23,7 @@ export interface Theme {
   note: string;
   noteInk: string;
   danger: string;
+  warning: string;
   /** True when the surface is dark, so shadows and scrims can flip. */
   dark: boolean;
 }
@@ -44,6 +45,7 @@ const FALLBACK: Theme = {
   note: "#FEF4D7",
   noteInk: "#6B5518",
   danger: "#FA3928",
+  warning: "#FD9F0A",
   dark: false,
 };
 
@@ -76,6 +78,7 @@ export function readTheme(force = false): Theme {
     note: read("--note", FALLBACK.note),
     noteInk: read("--note-ink", FALLBACK.noteInk),
     danger: read("--danger", FALLBACK.danger),
+    warning: read("--warning", FALLBACK.warning),
     dark: look === "graphite-dark",
   };
   cachedLook = look;

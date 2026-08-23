@@ -96,6 +96,18 @@
   filter: brightness(0.97);
 }
 
+/* The one button that puts something on air. Amber rather than the accent,
+   because the accent already means "live" and this is the thing that makes it
+   so -- and rather than red, because taking a shot is not a mistake. */
+.btn--take {
+  background: var(--warning);
+  color: #241500;
+  font-weight: 650;
+}
+.btn--take:hover {
+  background: #e08c00;
+}
+
 .btn--danger {
   background: var(--danger-tint);
   color: var(--danger);

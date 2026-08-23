@@ -26,7 +26,8 @@ const cx = (...parts: Array<string | false | null | undefined>) =>
    Button
    ========================================================================== */
 
-export type ButtonTone = "primary" | "secondary" | "ghost" | "danger" | "subtle";
+/** `take` is for the one button that puts something on air. */
+export type ButtonTone = "primary" | "secondary" | "ghost" | "danger" | "subtle" | "take";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export function Button({

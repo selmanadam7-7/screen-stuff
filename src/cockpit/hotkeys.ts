@@ -116,6 +116,13 @@ export function installLocalHotkeys(): () => void {
         event.preventDefault();
         store.bringThem();
         return;
+      case "t":
+      case "T":
+        // Only when there is something queued, so T stays free otherwise.
+        if (!store.preview) return;
+        event.preventDefault();
+        store.take();
+        return;
       case "g":
       case "G":
         event.preventDefault();

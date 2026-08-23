@@ -1818,3 +1818,14 @@
   background: var(--warning);
   color: #fff;
 }
+
+/* The next shot, and the button that puts it on air. */
+.preview-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.scene-chip.is-preview {
+  border-color: var(--warning);
+  color: #8a5600;
+}

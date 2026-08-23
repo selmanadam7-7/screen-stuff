@@ -51,7 +51,9 @@ type Drag =
   | { kind: "ink"; points: number[] }
   | { kind: "redact"; tileId: string; from: Vec2; to: Vec2 }
   | { kind: "stage-move"; from: Vec2; original: Rect; moved: boolean }
-  | { kind: "stage-resize"; handle: HandleName; original: Rect; from: Vec2 };
+  | { kind: "stage-resize"; handle: HandleName; original: Rect; from: Vec2 }
+  | { kind: "preview-move"; from: Vec2; original: Rect; moved: boolean }
+  | { kind: "preview-resize"; handle: HandleName; original: Rect; from: Vec2 };
 
 export function Editor({
   client,
@@ -200,6 +202,7 @@ export function Editor({
                 locked: state.doc.stageLocked,
                 label: `${state.isPrivate ? "Stage · private" : "Stage"} · ${stageLabel(state.doc.frame)}`,
               },
+          preview: state.preview ? { rect: state.preview, selected: state.previewSelected } : null,
           guides: guidesRef.current,
           showGrid: state.doc.showGrid,
           marquee,
@@ -332,6 +335,36 @@ export function Editor({
     if (state.ink.tool) {
       dragRef.current = { kind: "ink", points: [point.x, point.y] };
       return;
+    }
+
+    if (state.preview) {
+      const slop = HANDLE_SIZE * boardPerPixel();
+      if (state.previewSelected) {
+        const handle = stageHandleAt(state.preview, point, slop * 1.6);
+        if (handle) {
+          dragRef.current = {
+            kind: "preview-resize",
+            handle,
+            original: { ...state.preview },
+            from: point,
+          };
+          return;
+        }
+      }
+      const label = "Next";
+      const { view, width } = viewForCanvas();
+      const tab = stageTabFor(state.preview, label, width / view.w);
+      if (stageHit(state.preview, point, slop, tab)) {
+        state.selectPreview(true);
+        dragRef.current = {
+          kind: "preview-move",
+          from: point,
+          original: { ...state.preview },
+          moved: false,
+        };
+        setCursor("move");
+        return;
+      }
     }
 
     // The stage's own handles come first: they sit on top of everything, and a
@@ -520,6 +553,26 @@ export function Editor({
           history: false,
         });
         dragRef.current = { ...drag, moved: true };
+        break;
+      }
+      case "preview-move": {
+        const dx = point.x - drag.from.x;
+        const dy = point.y - drag.from.y;
+        if (!drag.moved && Math.hypot(dx, dy) < boardPerPixel() * 3) return;
+        state.setPreview({ ...drag.original, x: drag.original.x + dx, y: drag.original.y + dy });
+        dragRef.current = { ...drag, moved: true };
+        break;
+      }
+      case "preview-resize": {
+        state.setPreview(
+          resizeStage(
+            drag.original,
+            drag.handle,
+            { x: point.x - drag.from.x, y: point.y - drag.from.y },
+            state.doc.aspect,
+            { fromCenter: event.altKey },
+          ),
+        );
         break;
       }
       case "stage-resize": {
