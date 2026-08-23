@@ -48,6 +48,23 @@ jobs:
     name: rust (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
+
+      # screencapturekit depends on apple-metal, whose Swift bridge uses Metal 4
+      # types -- MTLSamplerDescriptor.lodBias, MTLResidencySet, MTLLogState. The
+      # runner's default Xcode is older than that, and the build then fails in a
+      # dependency's Swift without ever reaching our code. Selecting the newest
+      # Xcode present is the fix; listing them first means that if it is still
+      # too old, the log says so instead of leaving us guessing.
+      - name: Use the newest Xcode
+        if: matrix.name == 'macos'
+        run: |
+          ls -d /Applications/Xcode*.app
+          newest=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          echo "selecting $newest"
+          sudo xcode-select -s "$newest"
+          xcodebuild -version
+          swift --version
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
