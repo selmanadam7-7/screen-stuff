@@ -10,7 +10,17 @@
 </p>
 
 <p align="center">
+  <a href="https://selmanadam7-7.github.io/screen-stuff/"><b>Try it in your browser →</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/selmanadam7-7/screen-stuff/releases/latest">Download for Windows</a>
+</p>
+
+<p align="center">
   Windows 10 1809+ &middot; 64-bit &middot; Tauri&nbsp;2 + Rust &middot; 3&nbsp;MB installer
+</p>
+
+<p align="center">
+  <img src="assets/brand/hero/hero.gif" width="860" alt="Four monitors on one board; the stage tightens onto one; the shot is rearranged and cut" />
 </p>
 
 ---
@@ -42,6 +52,15 @@ no "hold on, let me share a different screen".
 </table>
 
 ---
+
+## Try it without installing anything
+
+**[selmanadam7-7.github.io/screen-stuff](https://selmanadam7-7.github.io/screen-stuff/)**
+
+That is the real cockpit, running in your browser, with drawn desktops instead
+of your monitors. The same store, the same renderer, every keyboard shortcut.
+Drag the blue rectangle, press `0`, press `T`. The only thing it cannot do is
+capture your actual screens, which is what the download is for.
 
 ## Installing it
 

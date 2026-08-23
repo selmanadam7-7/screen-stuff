@@ -7,6 +7,9 @@ import { resolve } from "node:path";
 //   board.html  -> the board (the clean canvas that goes on air)
 //   guest.html  -> what a guest opens, served by Rust over the local network
 export default defineConfig({
+  // GitHub Pages serves the demo from a sub-path; the app itself is served from
+  // the root of a Tauri window. One env var rather than a second config.
+  base: process.env.SCREEN_STUFF_BASE ?? "/",
   plugins: [react()],
   clearScreen: false,
   server: {

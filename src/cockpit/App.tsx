@@ -8,6 +8,9 @@ import { cursorOnBoard, punchRect } from "../core/pointer";
 import { SpeechGate, approach } from "../core/voice";
 import { MicLevel } from "./mic";
 import { Presence } from "../core/presence";
+import { DemoMedia } from "../demo/screens";
+import { DemoBanner } from "../demo/DemoBanner";
+import { isDemo, startDemo } from "../demo/setup";
 import { ReplayCapture } from "./replayCapture";
 import { isTyping } from "./Editor";
 import type { Stroke } from "../core/types";
@@ -54,6 +57,8 @@ export function App() {
 }
 
 function Cockpit() {
+  // Demo mode swaps the capture engine for drawn desktops and nothing else.
+  const demo = useMemo(() => (isDemo() ? new DemoMedia() : null), []);
   const [client, setClient] = useState<FrameClient | null>(null);
   const [screensOpen, setScreensOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -68,7 +73,7 @@ function Cockpit() {
   const autoFrame = useStore((s) => s.autoFrame);
   const spotlightCursor = useStore((s) => s.spotlightCursor);
   const autoCamera = useStore((s) => s.autoCamera);
-  const replayOn = useStore((s) => s.replayOn);
+  const replayOn = useStore((s) => s.replayOn) && !isDemo();
   const replay = useMemo(() => new ReplayCapture(), []);
   const presence = useMemo(() => new Presence(), []);
   const poolRef = useRef<MediaPool | null>(null);
@@ -83,6 +88,10 @@ function Cockpit() {
     },
     [cameraFeeds],
   );
+
+  useEffect(() => {
+    if (demo) startDemo();
+  }, [demo]);
 
   /* --- the chosen look, applied to the document root --------------------- */
   useEffect(() => {
@@ -440,7 +449,12 @@ function Cockpit() {
         <main className="app__center">
           {panel === "board" ? (
             <>
-              <Editor client={client} onPool={handlePool} presence={presence} />
+              <Editor
+                client={client}
+                onPool={handlePool}
+                presence={presence}
+                media={demo ?? undefined}
+              />
               <div className="canvas-dock canvas-dock--top">
                 <div className="canvas-dock__mid">
                   <Toolbar
@@ -486,6 +500,7 @@ function Cockpit() {
       <AddScreens open={screensOpen} onClose={() => setScreensOpen(false)} client={client} />
       <ShareBoard open={shareOpen} onClose={() => setShareOpen(false)} />
 
+      {demo && <DemoBanner />}
       {notice && <div className={cx("toast", `is-${notice.tone}`)}>{notice.message}</div>}
       {dragOver && <div className="drop-hint">Drop it on the board</div>}
     </div>

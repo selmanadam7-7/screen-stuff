@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FrameClient } from "../core/frames";
 import { MediaPool } from "../core/media";
+import type { MediaResolver } from "../core/render";
 import { handlePositions, renderBoard, HANDLE_SIZE } from "../core/render";
 import { newId } from "../core/doc";
 import {
@@ -65,8 +66,17 @@ export function Editor({
   client,
   onPool,
   presence,
+  media,
 }: {
   client: FrameClient | null;
+  /**
+   * Pixels from somewhere other than the capture engine.
+   *
+   * Only the demo passes this. It is a seam rather than a mode: the demo runs
+   * the shipped cockpit with one thing swapped, which is the only kind of demo
+   * worth having.
+   */
+  media?: MediaResolver;
   /** Where the guests are pointing, and what they just said. */
   presence?: Presence;
   /**
@@ -93,7 +103,7 @@ export function Editor({
 
   const pool = useMemo(
     () =>
-      client
+      client && !media
         ? new MediaPool(client, {
             fps: 20, // the cockpit does not need 60 — the board does
             quality: 78,
@@ -192,7 +202,7 @@ export function Editor({
         height,
         view: corrected,
         doc: liveInk ? { ...state.doc, strokes: [...state.doc.strokes, liveInk] } : state.doc,
-        media: pool ?? { resolve: () => null },
+        media: media ?? pool ?? { resolve: () => null },
         now,
         presence: presence
           ? {

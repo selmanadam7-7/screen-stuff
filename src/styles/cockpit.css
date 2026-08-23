@@ -1857,3 +1857,75 @@
   color: var(--ink-3);
   text-align: right;
 }
+
+/* --- the demo -------------------------------------------------------------- */
+
+/* Bottom-left, over the minimap's column but above it: on a demo the minimap is
+   the least useful thing on screen and the pitch is the most. */
+.demo-banner {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  z-index: 40;
+  width: 320px;
+  max-width: calc(100vw - 36px);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-lg);
+}
+.demo-banner__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.demo-banner__mark {
+  flex: none;
+  color: var(--accent);
+  margin-top: 1px;
+}
+.demo-banner__head b {
+  display: block;
+  font-size: var(--t-13);
+  color: var(--ink);
+}
+.demo-banner__head p {
+  margin: 4px 0 0;
+  font-size: var(--t-11);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.demo-banner__try {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.demo-banner__try li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 10px;
+  border-left: 2px solid var(--accent-line);
+}
+.demo-banner__try b {
+  font-size: var(--t-12);
+  color: var(--ink);
+}
+.demo-banner__try span {
+  font-size: var(--t-11);
+  color: var(--ink-3);
+  line-height: 1.4;
+}
+.demo-banner__foot {
+  margin: 0;
+  font-size: var(--t-11);
+  color: var(--ink-3);
+  text-align: center;
+}
