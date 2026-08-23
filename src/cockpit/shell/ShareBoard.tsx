@@ -28,6 +28,44 @@ import {
 import { Avatar, Badge, Button, Group, Modal, Switch, cx } from "../../ui/primitives";
 import { useActions, useStore } from "../store";
 
+/**
+ * The link a broadcast tool takes, and what it is for.
+ *
+ * This is how Screen Stuff becomes a webcam. Windows' own virtual camera API
+ * wants a COM server registered machine-wide and loaded into the Frame Server
+ * service, which is system surgery this app promised not to do. Every broadcast
+ * tool already ships a virtual camera and a browser source, so this hands the
+ * shot to the one already installed -- and it works the same on macOS, where
+ * the equivalent API is no friendlier.
+ */
+function OutputLink({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Group title="Into OBS, and from there into anything">
+      <div className="link-row">
+        <code>{url}</code>
+        <Button
+          size="sm"
+          onClick={async () => {
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1600);
+          }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </Button>
+      </div>
+      <p className="field__hint">
+        The same board with none of the furniture -- no toolbar, no cursors, no
+        names. Add a <strong>Browser</strong> source in OBS, Streamlabs, vMix or
+        Ecamm, paste this, set it to 1920&nbsp;&times;&nbsp;1080, and start that
+        tool's virtual camera. Screen Stuff is then a webcam in Discord, Meet,
+        Zoom, Teams and anywhere else that takes one.
+      </p>
+    </Group>
+  );
+}
+
 export function ShareBoard({ open, onClose }: { open: boolean; onClose: () => void }) {
   const guests = useStore((s) => s.guests);
   const powers = useStore((s) => s.guestPowers);
@@ -153,6 +191,10 @@ export function ShareBoard({ open, onClose }: { open: boolean; onClose: () => vo
               with it.
             </p>
           </Group>
+
+          {guests.running && (publicOn ? guests.publicOutputLink : guests.outputLink) ? (
+            <OutputLink url={(publicOn ? guests.publicOutputLink : guests.outputLink)!} />
+          ) : null}
 
           <Group title="Permissions">
             <table className="perm">

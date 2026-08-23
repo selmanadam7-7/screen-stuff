@@ -20,29 +20,37 @@
 
 ## Not built
 
-### Camera output
+### A camera of our own
 
-Screen Stuff appearing as a webcam, so it works in apps you never share a window
-in.
+Screen Stuff appearing in the camera list itself, rather than through another
+tool's virtual camera.
 
-**What it needs.** Windows has no way for a normal process to *be* a camera. The
-supported route is `MFCreateVirtualCamera`, which needs a Media Foundation media
-source registered under its own CLSID — a separate COM DLL, registered at install
-time, that reads frames the app writes into shared memory. That is a real
-component with its own lifetime, not a function call: roughly a thousand lines of
-COM, a registration step, and a compatibility matrix across Discord, Zoom, Meet
-and Teams, each of which enumerates cameras slightly differently.
+**There is a working answer today, and it is the output link.** Share → the
+output link is the board with none of the furniture, at `/o/<token>`. Point a
+Browser source at it in OBS, Streamlabs, vMix or Ecamm, start that tool's virtual
+camera, and Screen Stuff is a webcam in Discord, Meet, Zoom and Teams. No driver,
+no admin, nothing registered, and it works the same on macOS. `check-output.mjs`
+loads it at four window shapes and asserts the letterboxing and the absence of
+every piece of interface, because both failures are silent.
 
-**Why it was left until last.** It is the only piece whose failure mode is
-invisible from here: I can build it, but I cannot verify that Discord lists it
-without driving Discord's UI. Everything else in this app was verified running.
-Shipping an unverified camera would have meant telling you something works when I
-had not seen it work.
+**Why not a native one.** Windows' own route is `MFCreateVirtualCamera`, and
+[the documentation](https://learn.microsoft.com/en-us/windows/win32/api/mfvirtualcamera/nf-mfvirtualcamera-mfcreatevirtualcamera)
+is unambiguous about what it costs: the `sourceId` must be the CLSID of a
+registered Media Foundation media source. That source is a separate COM DLL, and
+because the Frame Server loads it as LOCAL SERVICE in session 0, it must be
+registered under `HKLM` — HKCU is invisible to the service — which means an
+elevated install step. The DLL then runs inside a Microsoft service, where a
+crash degrades the camera stack for every app on the machine, not just this one.
 
-**What you lose without it, honestly.** Share mode covers Discord, Meet, Zoom and
-Slack today, carries audio, and is what most calls use anyway. Camera mode buys
-you two things: it frees the screen-share slot, and it works in the handful of
-places where sharing is awkward. It is a real gap, not a fatal one.
+That is the specific thing this project was told not to do: no drivers, nothing
+that could corrupt what is already working. An admin-installed COM server living
+inside the Windows camera service is not a driver, but it is the same category of
+risk, and the output link reaches the same place without taking it.
+
+**What a native camera would still buy.** One fewer application in the chain, and
+a camera that is there without OBS running. Worth doing eventually, behind an
+explicit opt-in and a one-click removal — and worth doing only when it can be
+verified in Discord rather than reasoned about.
 
 ### Guests beyond the local network — done, with a ceiling
 

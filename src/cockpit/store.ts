@@ -371,6 +371,8 @@ export const useStore = create<Store>((set, get) => ({
     running: false,
     link: null,
     publicLink: null,
+    outputLink: null,
+    publicOutputLink: null,
     tunnel: { state: "off", url: null, message: "" },
     guests: [],
   },

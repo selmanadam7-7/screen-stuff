@@ -401,6 +401,28 @@ What that costs, said plainly:
   encrypted, and someone else's machine is carrying them. If that matters for a
   particular call, stay on the local option.
 
+## Into any call, as a camera
+
+Share hands out a second link alongside the guest one: the **output link**, at
+`/o/<token>`. Same board, none of the furniture — no toolbar, no names, no
+cursors, no reconnecting notice. A camera does not have a user interface.
+
+Add a **Browser** source in OBS, Streamlabs, vMix or Ecamm, paste it, set it to
+1920 × 1080, and start that tool's virtual camera. Screen Stuff is then a webcam
+in Discord, Meet, Zoom, Teams and anywhere else that takes one — with nothing
+installed, nothing registered, and no administrator anywhere in the story.
+
+The letterboxing is drawn rather than laid out, and it is the part that matters.
+A guest window of the wrong shape shows *more board*, which is right for someone
+looking around. An output of the wrong shape must show exactly the stage and
+black bars, because the alternative is quietly broadcasting the private half of
+the board to everyone on the call. `scripts/check-output.mjs` loads the real page
+at four shapes and samples the pixels to prove it.
+
+An output view is a feed and not a person: it never draws, never roams whatever
+the host has granted, and does not appear in the guest list, so "2 watching"
+never means "one guest and OBS".
+
 ## Everyone else in the room
 
 A guest can already draw on the board, which is the heavyweight way to point at
@@ -543,6 +565,7 @@ node scripts/shoot.mjs <url> out.png                                    # screen
 node scripts/check-stage.mjs [base-url]                                 # drive the stage in a real browser
 node scripts/check-layout.mjs [base-url]                                # measure the shell at five widths
 node scripts/check-tunnel.mjs                                           # prove off-network sharing really works
+node scripts/check-output.mjs <output-url>                              # the output view at four window shapes
 node scripts/shoot-stage.mjs <out-dir> [base-url]                       # the stage in every state
 node scripts/make-icons.mjs                                             # redraw the app icon
 ```
@@ -551,14 +574,15 @@ The stream URL is printed by `pnpm app` on startup in debug builds.
 
 ## Not built yet
 
-Camera output — Screen Stuff appearing as a webcam — is the one promised piece
-that is not here. It needs a registered Media Foundation media source, which is a
-separate COM component rather than a function call, and it is the only part whose
-failure mode could not be verified from a terminal. Share mode covers Discord,
-Meet, Zoom and Slack today and carries audio.
+Screen Stuff does not register itself in Windows' own camera list. The route for
+that is `MFCreateVirtualCamera`, and it requires a COM media source registered
+under `HKLM` and loaded into the Windows Frame Server service as LOCAL SERVICE —
+an elevated install step, and a component whose crash degrades the camera stack
+for every application on the machine. That is the category of system surgery this
+project set out to avoid, so it uses the output link above instead, which reaches
+the same place with nothing installed.
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) for exactly what it needs, what you lose
-without it, and the smaller gaps.
+See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the rest of the gaps.
 
 ## Brand
 

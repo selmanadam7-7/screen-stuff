@@ -254,3 +254,27 @@
     transform: none;
   }
 }
+
+/* ==========================================================================
+   Output mode
+
+   A browser source is a camera. Everything a person would need is hidden
+   rather than merely unused, because a bar that renders for one frame before
+   JavaScript hides it renders on somebody's stream.
+   ========================================================================== */
+body.is-output {
+  background: #000;
+  cursor: none;
+}
+body.is-output .guest-bar,
+body.is-output .guest-gate,
+body.is-output .guest-toast {
+  display: none !important;
+}
+body.is-output #guest-stage {
+  /* Edge to edge: the letterboxing is drawn, not laid out, so it is exact. */
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+}

@@ -15,7 +15,7 @@ use crate::protocol::{encode_frame, FLAG_GEOMETRY_CHANGED};
 use crate::sources::SourceId;
 use anyhow::{Context as _, Result};
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{Path, Request, State};
+use axum::extract::{Path, RawQuery, Request, State};
 use axum::http::{header, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -44,6 +44,7 @@ pub async fn start(hub: Arc<GuestHub>, port: u16) -> Result<RunningGuestServer> 
 
     let app = Router::new()
         .route("/g/:token", get(guest_page))
+        .route("/o/:token", get(guest_page))
         .route("/gw", get(guest_socket))
         .route("/assets/*path", get(asset))
         .fallback(not_found)
@@ -134,17 +135,23 @@ enum GuestReply<'a> {
     Refused { message: &'a str },
 }
 
-async fn guest_socket(ws: WebSocketUpgrade, State(state): State<GuestState>) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_guest(socket, state))
+async fn guest_socket(
+    ws: WebSocketUpgrade,
+    RawQuery(query): RawQuery,
+    State(state): State<GuestState>,
+) -> impl IntoResponse {
+    let output = query.as_deref().is_some_and(|q| q.split('&').any(|p| p == "output=1"));
+    ws.on_upgrade(move |socket| handle_guest(socket, state, output))
 }
 
-async fn handle_guest(socket: WebSocket, state: GuestState) {
+async fn handle_guest(socket: WebSocket, state: GuestState, output: bool) {
     let (mut sink, mut incoming) = socket.split();
     let hub = state.hub.clone();
 
-    let guest = hub.join(String::new());
+    // An output view gets everything a guest gets except a place in the room.
+    let guest = if output { hub.join_quietly() } else { hub.join(String::new()) };
     let guest_id = guest.id;
-    tracing::info!("guest {guest_id} joined");
+    tracing::info!("{} {guest_id} joined", if output { "output" } else { "guest" });
 
     let (events_tx, mut events_rx) = tokio::sync::mpsc::channel::<StreamEvent>(GUEST_QUEUE);
     let mut streams: HashMap<u32, Stream> = HashMap::new();

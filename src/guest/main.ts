@@ -5,6 +5,17 @@
  * document and open the same source streams, which is what lets them roam
  * independently: looking somewhere else is just drawing the same document at a
  * different view.
+ *
+ * The same page also serves **output mode**, at `/o/<token>` instead of
+ * `/g/<token>`: the shot, and nothing else. No toolbar, no name, no roaming, no
+ * cursors, no reconnecting notice — a browser source in OBS, vMix, Streamlabs
+ * or Ecamm is a camera, and a camera does not have a user interface.
+ *
+ * That is what makes Screen Stuff usable as a webcam today. Windows' own
+ * virtual camera API needs a COM server registered machine-wide and loaded into
+ * the Frame Server service, which is exactly the kind of system surgery this
+ * project promised not to do. Every broadcast tool already has a virtual camera
+ * and a browser source, so this hands the shot to the one they have.
  */
 
 import "../styles/guest.css";
@@ -23,6 +34,15 @@ interface Powers {
 }
 
 const INK_COLORS = ["#FF5A41", "#F5C062", "#56D9A3", "#8296FF", "#EAE6DC"];
+
+/**
+ * Output mode, decided by the path the page was opened at.
+ *
+ * The path rather than a query string, because a browser source's URL gets
+ * copied, pasted and hand-edited, and a lost `?output=1` would silently put a
+ * toolbar on somebody's stream.
+ */
+const OUTPUT = window.location.pathname.split("/").filter(Boolean)[0] === "o";
 
 const state = {
   doc: emptyBoard("Waiting for the host"),
@@ -63,6 +83,12 @@ root.innerHTML = `
   </div>
 `;
 
+if (OUTPUT) {
+    // Before anything can paint: a bar that appears for one frame appears on
+    // the stream. The canvas is the page.
+    document.body.classList.add("is-output");
+}
+
 const canvas = document.getElementById("guest-stage") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d", { alpha: false })!;
 const gate = document.getElementById("guest-gate")!;
@@ -75,7 +101,9 @@ const reactionBar = document.getElementById("guest-reactions")!;
 
 // The token is the last path segment: /g/<token>
 const token = window.location.pathname.split("/").filter(Boolean).pop() ?? "";
-const socketUrl = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/gw?token=${encodeURIComponent(token)}`;
+const socketUrl =
+  `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}` +
+  `/gw?token=${encodeURIComponent(token)}${OUTPUT ? "&output=1" : ""}`;
 
 const client = new FrameClient(socketUrl);
 const pool = new MediaPool(client, {
@@ -90,7 +118,9 @@ const pool = new MediaPool(client, {
 client.onConnectionChange = (connected) => {
   state.connected = connected;
   pip.className = `guest-pip${connected ? " is-good" : " is-bad"}`;
-  if (!connected) flash("reconnecting…");
+  // No notices on a feed. A dropped connection holds the last frame, which is
+  // what every other camera in the world does.
+  if (!connected && !OUTPUT) flash("reconnecting…");
 };
 
 client.onControl = (message) => {
@@ -104,7 +134,11 @@ client.onControl = (message) => {
     case "board": {
       state.doc = reviveBoard(message.doc, "Board");
       state.frame = (message.frame as Rect) ?? state.doc.frame;
-      state.powers = (message.powers as Powers) ?? state.powers;
+      // An output view is a feed, not a participant: whatever the host has
+      // granted, it never draws and never roams.
+      state.powers = OUTPUT
+        ? { draw: false, roam: false, files: false }
+        : ((message.powers as Powers) ?? state.powers);
       renderToolbar();
       followButton.style.display = state.powers.roam ? "" : "none";
       if (!state.powers.roam) state.view = null;
@@ -138,6 +172,12 @@ const join = () => {
 };
 document.getElementById("guest-join")!.addEventListener("click", join);
 nameInput.addEventListener("keydown", (e) => e.key === "Enter" && join());
+
+// Nothing to ask an output view. It is already looking.
+if (OUTPUT) {
+    gate.classList.add("is-gone");
+    send({ t: "hello", name: "Output" });
+}
 
 /** Reuse the frame client's socket rather than opening a second one. */
 function send(message: unknown) {
@@ -370,6 +410,11 @@ function tick(now: number) {
     if (trimmed !== state.doc) state.doc = trimmed;
   }
 
+  if (OUTPUT) {
+    renderOutput(now, dpr);
+    return;
+  }
+
   const view = currentView();
   pool.sync(state.doc, (canvas.width / view.w) / dpr);
 
@@ -396,6 +441,39 @@ function tick(now: number) {
   // their way back to the conversation.
   if (state.view) drawHostFrame(view);
   if (state.closed) drawClosed();
+}
+
+/**
+ * The shot, letterboxed into whatever size the broadcast tool asked for.
+ *
+ * A guest window that is the wrong shape shows *more board*, which is right for
+ * someone looking around. An output at the wrong shape must show exactly the
+ * stage and bars, because the alternative is quietly broadcasting the private
+ * part of the board to everyone on the call.
+ */
+function renderOutput(now: number, dpr: number) {
+  const stage = state.frame;
+  const aspect = stage.w / Math.max(1, stage.h);
+  const box = fitInto(canvas.width, canvas.height, aspect);
+
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  pool.sync(state.doc, (box.w / stage.w) / dpr);
+
+  ctx.save();
+  // renderBoard draws from its own origin outwards, so translating first puts
+  // the whole thing inside the box without it needing to know about one.
+  ctx.translate(box.x, box.y);
+  renderBoard({ ctx, width: box.w, height: box.h, view: stage, doc: state.doc, media: pool, now });
+  ctx.restore();
+}
+
+/** The largest rectangle of `aspect` that fits, centred. */
+function fitInto(width: number, height: number, aspect: number) {
+  const w = Math.min(width, Math.round(height * aspect));
+  const h = Math.round(w / aspect);
+  return { x: Math.round((width - w) / 2), y: Math.round((height - h) / 2), w, h };
 }
 
 function drawHostFrame(view: Rect) {

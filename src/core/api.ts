@@ -258,6 +258,10 @@ export interface GuestStatus {
   link: string | null;
   /** For someone anywhere, once the tunnel is open. */
   publicLink: string | null;
+  /** The board with none of the furniture, for a broadcast tool to take. */
+  outputLink: string | null;
+  /** The same, from anywhere, when the tunnel is up. */
+  publicOutputLink: string | null;
   tunnel: TunnelStatus;
   guests: GuestInfo[];
 }
@@ -267,6 +271,8 @@ const NO_GUESTS: GuestStatus = {
   running: false,
   link: null,
   publicLink: null,
+    outputLink: null,
+    publicOutputLink: null,
   tunnel: NO_TUNNEL,
   guests: [],
 };

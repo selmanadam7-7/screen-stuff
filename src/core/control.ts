@@ -54,7 +54,15 @@ export interface ControlTarget {
   spotlight: string | null;
   autoFrame: AutoFrameMode;
   punchedFrom: Rect | null;
-  guests: { running: boolean; link: string | null; publicLink?: string | null; guests: unknown[] };
+  guests: {
+    running: boolean;
+    link: string | null;
+    publicLink?: string | null;
+    /** The board with none of the furniture, for a broadcast tool. */
+    outputLink?: string | null;
+    publicOutputLink?: string | null;
+    guests: unknown[];
+  };
 
   setStage(next: Rect, options?: { transition?: "cut" | "fly"; force?: boolean }): void;
   applyLayout(kind: LayoutKind): void;
@@ -595,6 +603,9 @@ export const ACTIONS: Record<string, Action> = {
         guests: true,
         link: target.guests.link,
         publicLink: target.guests.publicLink ?? null,
+        // The one a broadcast tool wants, which is usually why a script is
+        // opening the link in the first place.
+        outputLink: target.guests.publicOutputLink ?? target.guests.outputLink ?? null,
         watching: target.guests.guests.length,
       };
     },
@@ -701,6 +712,7 @@ export function stateOf(target: ControlTarget) {
       running: target.guests.running,
       link: target.guests.link,
       publicLink: target.guests.publicLink ?? null,
+      outputLink: target.guests.publicOutputLink ?? target.guests.outputLink ?? null,
       watching: target.guests.guests.length,
     },
   };

@@ -183,7 +183,14 @@ impl Store {
     pub fn read_settings(&self) -> serde_json::Value {
         std::fs::read(self.root.join("settings.json"))
             .ok()
-            .and_then(|b| serde_json::from_slice(&b).ok())
+            .and_then(|bytes| {
+                // Notepad, PowerShell's Set-Content and half of Windows write a
+                // byte-order mark. serde refuses it, and the fallback below is
+                // silent, so without this someone who opens their settings to
+                // look at them loses every preference they ever set.
+                let json = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
+                serde_json::from_slice(json).ok()
+            })
             .unwrap_or_else(|| serde_json::json!({}))
     }
 
@@ -366,6 +373,18 @@ mod tests {
         assert_eq!(store.read_settings(), serde_json::json!({}));
         store.write_settings(&serde_json::json!({ "quality": 88 })).unwrap();
         assert_eq!(store.read_settings()["quality"], 88);
+    }
+
+    #[test]
+    fn settings_survive_a_byte_order_mark() {
+        // What you get back if you open settings.json in Notepad and save it,
+        // or touch it with PowerShell. Refusing it loses every preference.
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::new(dir.path()).unwrap();
+        let mut bytes = vec![0xEF, 0xBB, 0xBF];
+        bytes.extend_from_slice(br#"{"look":"pure-white"}"#);
+        std::fs::write(dir.path().join("settings.json"), bytes).unwrap();
+        assert_eq!(store.read_settings()["look"], "pure-white");
     }
 
     #[test]

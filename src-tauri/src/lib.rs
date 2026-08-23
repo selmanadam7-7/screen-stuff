@@ -321,6 +321,10 @@ pub struct GuestStatus {
     link: Option<String>,
     /// The address for someone anywhere, when the tunnel is up.
     public_link: Option<String>,
+    /// The board with none of the furniture, for a broadcast tool to take.
+    output_link: Option<String>,
+    /// The same, from anywhere, when the tunnel is up.
+    public_output_link: Option<String>,
     tunnel: tunnel::TunnelStatus,
     guests: Vec<GuestInfo>,
 }
@@ -421,6 +425,8 @@ fn guest_status_of(state: &tauri::State<'_, AppState>) -> GuestStatus {
         running: state.guests.is_running(),
         link: state.guests.link(),
         public_link: public_link_of(state),
+        output_link: state.guests.output_link(),
+        public_output_link: through_tunnel(state, state.guests.output_link()),
         tunnel: state.tunnel.status(),
         guests: state.guests.roster(),
     }
@@ -428,11 +434,16 @@ fn guest_status_of(state: &tauri::State<'_, AppState>) -> GuestStatus {
 
 /// The same guest path, on the public origin instead of the LAN one.
 fn public_link_of(state: &tauri::State<'_, AppState>) -> Option<String> {
+    through_tunnel(state, state.guests.link())
+}
+
+/// Any local guest-server link, re-pointed at the public origin.
+///
+/// Reuses the path the guest server already published rather than rebuilding
+/// it, so the two links can never disagree about the token.
+fn through_tunnel(state: &tauri::State<'_, AppState>, local: Option<String>) -> Option<String> {
     let origin = state.tunnel.url()?;
-    let path = state.guests.link()?;
-    // Reuse the path the guest server already published rather than rebuilding
-    // it, so the two links can never disagree about the token.
-    let path = path.split_once("//")?.1.split_once('/')?.1;
+    let path = local?.split_once("//")?.1.split_once('/')?.1.to_string();
     Some(format!("{origin}/{path}"))
 }
 

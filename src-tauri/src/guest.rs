@@ -119,6 +119,9 @@ pub struct RunningGuestServer {
     pub addr: SocketAddr,
     pub token: String,
     pub url: String,
+    /// The same page with no toolbar, no roaming and no cursors: the shot, and
+    /// nothing else, for anything that takes a browser source.
+    pub output_url: String,
     shutdown: tokio::sync::oneshot::Sender<()>,
 }
 
@@ -200,6 +203,17 @@ impl GuestHub {
         let _ = self.to_host.send(event);
     }
 
+    /// Join without being a person.
+    ///
+    /// The output view is a video feed for a broadcast tool, not somebody in
+    /// the room. It still needs an id, because streams are owned by one, but
+    /// putting OBS in the roster would have the host looking at "2 watching"
+    /// with one guest in the call.
+    pub fn join_quietly(&self) -> GuestInfo {
+        let id = self.next_guest.fetch_add(1, Ordering::Relaxed);
+        GuestInfo { id, name: "Output".into(), view: None }
+    }
+
     pub fn join(&self, name: String) -> GuestInfo {
         let id = self.next_guest.fetch_add(1, Ordering::Relaxed);
         let name = sanitise_name(&name, id);
@@ -234,6 +248,11 @@ impl GuestHub {
 
     pub fn link(&self) -> Option<String> {
         self.running.lock().as_ref().map(|r| r.url.clone())
+    }
+
+    /// The same board with nobody's furniture on it, for a broadcast tool.
+    pub fn output_link(&self) -> Option<String> {
+        self.running.lock().as_ref().map(|r| r.output_url.clone())
     }
 
     /// The loopback port the guest server listens on, for anything that needs
@@ -331,7 +350,11 @@ impl RunningGuestServer {
         shutdown: tokio::sync::oneshot::Sender<()>,
     ) -> Self {
         let url = format!("http://{host}:{}/g/{token}", addr.port());
-        Self { addr, token, url, shutdown }
+        // Same token, deliberately: anyone holding the guest link can already
+        // see everything, and the output view shows strictly less — no roaming,
+        // no drawing, no other people.
+        let output_url = format!("http://{host}:{}/o/{token}", addr.port());
+        Self { addr, token, url, output_url, shutdown }
     }
 }
 
