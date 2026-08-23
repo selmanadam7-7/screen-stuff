@@ -790,6 +790,37 @@ function BoardInspector() {
         />
       </Group>
 
+      <Group title="Your name on the shot">
+        <p className="inspector__note">
+          A banner in the corner of the stage. Leave both empty for none.
+        </p>
+        <div className="grid-2">
+          <Field label="Name">
+            <Input
+              value={doc.lowerThird?.name ?? ""}
+              placeholder="Adam Selman"
+              onChange={(e) =>
+                store.setLowerThird({ name: e.target.value, role: doc.lowerThird?.role ?? "" })
+              }
+            />
+          </Field>
+          <Field label="What you do">
+            <Input
+              value={doc.lowerThird?.role ?? ""}
+              placeholder="BrandBased"
+              onChange={(e) =>
+                store.setLowerThird({ name: doc.lowerThird?.name ?? "", role: e.target.value })
+              }
+            />
+          </Field>
+        </div>
+        {(doc.lowerThird?.name || doc.lowerThird?.role) && (
+          <Button block onClick={() => store.setLowerThird(null)}>
+            Take the banner off
+          </Button>
+        )}
+      </Group>
+
       <Group title="Capture">
         <Field label="Frame rate" inline>
           <Select

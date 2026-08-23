@@ -14,6 +14,7 @@
 
 import { fitInto, rectCenter, tileRect } from "./geometry";
 import { strokeOpacity } from "./doc";
+import { countdownText, lowerThirdRect } from "./overlays";
 import { redactionsOf, toBoardRect } from "./redact";
 import { stageHandles, stageTabFor } from "./stage";
 import { readTheme, type Theme } from "./theme";
@@ -134,6 +135,8 @@ export function renderBoard(input: RenderInput): void {
   drawStrokes(ctx, doc.strokes, input.now, scale);
 
   if (input.pointer) drawPointer(ctx, input.pointer, scale, theme);
+  // On the stage, over everything, under only the operator's own chrome.
+  drawOverlays(ctx, doc, scale, theme);
   if (chrome) drawChrome(ctx, doc, chrome, scale, theme);
 
   ctx.restore();
@@ -858,6 +861,105 @@ function drawPointer(
   ctx.arc(pointer.at.x, pointer.at.y, 13 * px, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
+}
+
+/**
+ * The holding card and the lower third.
+ *
+ * Anchored to the stage rather than the view, so the operator sees them exactly
+ * where the audience will however far they have wandered, and they stay put
+ * when the shot moves.
+ */
+function drawOverlays(
+  ctx: CanvasRenderingContext2D,
+  doc: BoardDoc,
+  scale: number,
+  theme: Theme,
+) {
+  const stage = doc.frame;
+  const card = doc.card ?? null;
+  const third = doc.lowerThird ?? null;
+
+  if (card) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(stage.x, stage.y, stage.w, stage.h);
+    ctx.clip();
+
+    if (card.showBoard) {
+      ctx.fillStyle = theme.dark ? "rgba(8,10,14,0.82)" : "rgba(16,20,28,0.78)";
+    } else {
+      ctx.fillStyle = theme.dark ? "#0b0d12" : theme.canvas;
+    }
+    ctx.fillRect(stage.x, stage.y, stage.w, stage.h);
+
+    const onDark = card.showBoard || theme.dark;
+    const cx = stage.x + stage.w / 2;
+    const titleSize = stage.h * 0.085;
+    // Date.now(), not the render clock. The deadline is stored in wall-clock
+    // time because it has to mean the same thing in the cockpit, in the board
+    // window and in a guest's browser, and performance.now() has a different
+    // origin in every one of them.
+    const countdown = countdownText(card, Date.now());
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // The whole block is centred as one, so a card with a clock does not sit
+    // visibly lower than one without.
+    const blockHeight = titleSize * (countdown ? 2.9 : 1.9);
+    let y = stage.y + stage.h / 2 - blockHeight / 2 + titleSize * 0.6;
+
+    ctx.fillStyle = onDark ? "#ffffff" : theme.ink;
+    ctx.font = `650 ${titleSize}px ${UI_FONT}`;
+    ctx.fillText(card.title, cx, y);
+    y += titleSize * 1.15;
+
+    if (card.subtitle) {
+      ctx.fillStyle = onDark ? "rgba(255,255,255,0.62)" : theme.ink2;
+      ctx.font = `400 ${titleSize * 0.42}px ${UI_FONT}`;
+      ctx.fillText(card.subtitle, cx, y);
+      y += titleSize * 0.9;
+    }
+
+    if (countdown) {
+      ctx.fillStyle = theme.accent;
+      ctx.font = `600 ${titleSize * 1.15}px ${UI_FONT}`;
+      ctx.fillText(countdown, cx, y + titleSize * 0.4);
+    }
+    ctx.restore();
+  }
+
+  if (third && (third.name.trim() || third.role.trim())) {
+    const box = lowerThirdRect(stage);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(stage.x, stage.y, stage.w, stage.h);
+    ctx.clip();
+
+    // An accent spine rather than a box outline: it reads at any size and it
+    // ties the banner to everything else the app paints in the accent.
+    const spine = Math.max(2 / scale, box.h * 0.06);
+    ctx.fillStyle = theme.accent;
+    ctx.fillRect(box.x, box.y, spine, box.h);
+
+    ctx.fillStyle = theme.dark ? "rgba(12,15,20,0.86)" : "rgba(255,255,255,0.92)";
+    ctx.fillRect(box.x + spine, box.y, box.w - spine, box.h);
+
+    const pad = box.h * 0.22;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    const nameSize = box.h * 0.38;
+    ctx.fillStyle = theme.ink;
+    ctx.font = `620 ${nameSize}px ${UI_FONT}`;
+    ctx.fillText(third.name, box.x + spine + pad, box.y + box.h * 0.46);
+    if (third.role) {
+      ctx.fillStyle = theme.ink2;
+      ctx.font = `450 ${nameSize * 0.62}px ${UI_FONT}`;
+      ctx.fillText(third.role, box.x + spine + pad, box.y + box.h * 0.78);
+    }
+    ctx.restore();
+  }
 }
 
 export const HANDLE_SIZE = 9;

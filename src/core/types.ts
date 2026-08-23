@@ -8,6 +8,7 @@
  * what makes everything outside the stage private without any extra machinery.
  */
 
+import type { HoldingCard, LowerThird } from "./overlays";
 import type { Redaction } from "./redact";
 
 export type Rect = { x: number; y: number; w: number; h: number };
@@ -173,6 +174,10 @@ export interface BoardDoc {
   quality: number;
   /** Default frame rate for source tiles. */
   fps: number;
+  /** What the audience sees instead of the board, when one is up. */
+  card?: HoldingCard | null;
+  /** Your name and what you do, in the corner of the shot. */
+  lowerThird?: LowerThird | null;
 }
 
 export type NavMode = "free" | "spotlight" | "follow";

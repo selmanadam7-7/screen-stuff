@@ -8,10 +8,12 @@
 import { useEffect, useRef, useState } from "react";
 import { contentBounds } from "../../core/doc";
 import { boundingRect, fitAspect } from "../../core/geometry";
+import { CARD_PRESETS } from "../../core/overlays";
 import { homeView } from "../../core/stage";
 import {
   AddIcon,
   BackIcon,
+  CardIcon,
   ExpandIcon,
   FollowIcon,
   ForwardIcon,
@@ -140,6 +142,8 @@ export function SceneRail() {
       <AutoFrameChip />
 
       <PointerChip />
+
+      <CardChip />
 
       {spotlight && (
         <button className="scene-chip is-active" onClick={() => store.setSpotlight(null)}>
@@ -277,6 +281,59 @@ function PointerChip() {
       <PointerIcon size={13} aria-hidden />
       {on ? "Pointer shown" : "Show my pointer"}
     </button>
+  );
+}
+
+/**
+ * What the audience sees instead of your screens.
+ *
+ * On the rail because you reach for it at exactly the moment you need to stop
+ * showing your desktop, and hunting through a settings page is the one thing
+ * you cannot do then.
+ */
+function CardChip() {
+  const card = useStore((s) => s.doc.card);
+  const store = useActions();
+  const [open, setOpen] = useState<{ x: number; y: number } | null>(null);
+
+  if (card) {
+    return (
+      <button
+        className="scene-chip is-card"
+        onClick={() => store.showCard(null)}
+        title="Take the card down and go back to the board"
+      >
+        <CardIcon size={13} aria-hidden />
+        {card.title} — take it down
+      </button>
+    );
+  }
+
+  return (
+    <span className="scene-chip-wrap">
+      <button
+        className="scene-chip"
+        title="Cover the shot with a card"
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setOpen(open ? null : { x: r.left, y: r.top - 8 });
+        }}
+      >
+        <CardIcon size={13} aria-hidden />
+        Hold the shot
+      </button>
+      {open && (
+        <Menu
+          x={open.x}
+          y={open.y}
+          onClose={() => setOpen(null)}
+          entries={CARD_PRESETS.map((preset) => ({
+            label: preset.minutes ? `${preset.title} (${preset.minutes} min)` : preset.title,
+            onSelect: () => store.raisePreset(preset.key),
+          }))}
+        />
+      )}
+    </span>
   );
 }
 

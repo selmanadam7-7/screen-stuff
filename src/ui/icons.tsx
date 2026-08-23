@@ -99,6 +99,8 @@ export const StageIcon = AspectRatioSquare as Icon;
 export const FollowIcon = Crosshairs as Icon;
 /** Where the operator is pointing, shown to the audience. */
 export const PointerIcon = Cursor as Icon;
+/** A card held over the shot instead of the board. */
+export const CardIcon = Presentation as Icon;
 export const ScreenIcon = Monitor as Icon;
 export const DisplayIcon = Display as Icon;
 export const WindowIcon = Frame as Icon;

@@ -208,6 +208,25 @@ rearrange, then **Bring them here** moves the stage to where you now are.
 In the cockpit everything outside the stage is dimmed and the stage is outlined
 and named — so what is on air is never a guess.
 
+## Holding the shot
+
+**Hold the shot** on the scene rail covers the stage with a card — starting
+soon, back in a minute, taking a break, thanks for watching — with a live
+countdown where one makes sense. Every call needs this and nobody has one to
+hand, so people improvise with a Notes window at 400% and their desktop visible
+around the edges.
+
+The deadline is stored as a wall-clock time rather than a duration, because it
+has to mean the same thing in the cockpit, in the board window and in a guest's
+browser, and each of those has a different `performance.now()` origin.
+
+A card is a live decision, not a property of the board: reopening a board that
+was saved with "back in a minute" up does not put you back behind it.
+
+**Your name on the shot** puts a banner in the corner with your name and what
+you do, sized as a proportion of the stage so it looks the same on a punched-in
+shot as on the whole board.
+
 ## Audio, honestly
 
 A webcam is a video-only device. When an app asks Windows for "the camera" it

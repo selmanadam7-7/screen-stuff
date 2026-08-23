@@ -1806,3 +1806,15 @@
   font-size: var(--t-12);
   color: var(--ink-2);
 }
+
+/* A card is up: the one chip that should be impossible to miss. */
+.scene-chip.is-card {
+  background: var(--warning-tint);
+  border-color: var(--warning);
+  color: #8a5600;
+  font-weight: 600;
+}
+.scene-chip.is-card:hover {
+  background: var(--warning);
+  color: #fff;
+}

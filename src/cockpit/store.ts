@@ -21,6 +21,7 @@ import {
   zoomAround,
 } from "../core/geometry";
 import type { AutoFrameMode, AutoFrameTarget } from "../core/autoframe";
+import { cardFromPreset, type HoldingCard, type LowerThird } from "../core/overlays";
 import { describeRedaction, toTileFraction } from "../core/redact";
 import {
   ViewHistory,
@@ -225,6 +226,10 @@ export interface Actions {
   clearInk(): void;
 
   setBoardProp(patch: Partial<BoardDoc>): void;
+  /** Put a holding card up, or take it down with null. */
+  showCard(card: HoldingCard | null): void;
+  raisePreset(key: string): void;
+  setLowerThird(third: LowerThird | null): void;
   newBoard(name?: string): void;
   saveBoard(options?: { name?: string; kind?: "board" | "template"; as?: boolean }): Promise<void>;
   loadBoard(id: string): Promise<void>;
@@ -863,6 +868,22 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   // --- board files ---------------------------------------------------------
+
+  showCard(card) {
+    // History off: raising a card mid-call and undoing your way past it later
+    // would be a nasty surprise.
+    get().mutate((d) => ({ ...d, card }), { history: false });
+    if (card) get().toast(`"${card.title}" is on air`);
+  },
+
+  raisePreset(key) {
+    const card = cardFromPreset(key, Date.now());
+    if (card) get().showCard(card);
+  },
+
+  setLowerThird(third) {
+    get().mutate((d) => ({ ...d, lowerThird: third }), { history: false });
+  },
 
   setBoardProp(patch) {
     get().mutate((d) => {

@@ -62,6 +62,8 @@ export function emptyBoard(name = "Untitled board"): BoardDoc {
     showGrid: true,
     quality: 85,
     fps: 30,
+    card: null,
+    lowerThird: null,
   };
 }
 
@@ -501,6 +503,13 @@ export function reviveBoard(raw: unknown, fallbackName = "Recovered board"): Boa
     showGrid: typeof input.showGrid === "boolean" ? input.showGrid : base.showGrid,
     quality: clampNumber(input.quality, 30, 100, base.quality),
     fps: clampNumber(input.fps, 1, 120, base.fps),
+    // A card is a live decision, not a property of the board. Reopening a board
+    // that was saved with "back in a minute" up should not put it back on air.
+    card: null,
+    lowerThird:
+      input.lowerThird && typeof input.lowerThird.name === "string"
+        ? { name: input.lowerThird.name, role: String(input.lowerThird.role ?? "") }
+        : null,
   };
 }
 
