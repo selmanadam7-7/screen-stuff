@@ -480,10 +480,9 @@ mod platform {
             })
             .map(|w| {
                 let frame = w.frame();
-                let app = w
-                    .owning_application()
-                    .and_then(|a| a.application_name())
-                    .unwrap_or_default();
+                // application_name is a String, not an Option: an app with no
+                // name reports an empty one.
+                let app = w.owning_application().map(|a| a.application_name()).unwrap_or_default();
                 SourceInfo {
                     id: format!("window:{}", w.window_id()),
                     kind: SourceKind::Window,
@@ -554,20 +553,36 @@ mod platform {
         best.map(|(_, id)| id)
     }
 
+    /// Whether a mouse button is down *right now*.
+    ///
+    /// Declared here because the core-graphics crate does not wrap it, and the
+    /// alternative — reading it off a synthesised event — answers a different
+    /// question. This is the exact counterpart of the Windows side's
+    /// GetAsyncKeyState: the state of the button now, not whether it has been
+    /// pressed since anyone last asked.
+    ///
+    /// The framework is already linked by core-graphics; this only names one
+    /// more function in it.
+    #[link(name = "CoreGraphics", kind = "framework")]
+    extern "C" {
+        fn CGEventSourceButtonState(state_id: i32, button: u32) -> bool;
+    }
+
+    /// kCGEventSourceStateCombinedSessionState — the whole login session,
+    /// which is what "is the user pressing the mouse" means.
+    const COMBINED_SESSION_STATE: i32 = 1;
+    /// kCGMouseButtonLeft.
+    const LEFT_BUTTON: u32 = 0;
+
     pub fn cursor_state() -> Option<Cursor> {
-        use core_graphics::event::{CGEvent, CGEventType, CGMouseButton};
+        use core_graphics::event::CGEvent;
         use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 
+        // A source and an event with no type: the only thing read off it is
+        // the location, which CGEvent fills in from the current cursor.
         let source = CGEventSource::new(CGEventSourceStateID::CombinedSessionState).ok()?;
-        let event = CGEvent::new(source).ok()?;
-        let point = event.location();
-        // The same question the Windows side asks GetAsyncKeyState: is the
-        // button down right now, rather than has it been pressed since I asked.
-        let down = CGEventSource::button_state(
-            CGEventSourceStateID::CombinedSessionState,
-            CGMouseButton::Left as u32,
-        );
-        let _ = CGEventType::Null;
+        let point = CGEvent::new(source).ok()?.location();
+        let down = unsafe { CGEventSourceButtonState(COMBINED_SESSION_STATE, LEFT_BUTTON) };
         Some(Cursor { x: point.x as i32, y: point.y as i32, down })
     }
 

@@ -18,7 +18,17 @@ crate-type = ["rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2.8", features = ["tray-icon", "image-png", "protocol-asset"] }
+# macos-private-api is what makes a transparent window possible on macOS,
+# and the region picker IS a transparent window -- a full-screen sheet you
+# drag a rectangle on. Without it that feature has no macOS equivalent.
+# It rules out the Mac App Store, which was never the plan: this ships
+# directly, like every other broadcast tool.
+tauri = { version = "2.8", features = [
+    "tray-icon",
+    "image-png",
+    "protocol-asset",
+    "macos-private-api",
+] }
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-global-shortcut = "2"
@@ -56,7 +66,10 @@ jpeg-encoder = { version = "0.6", features = ["simd"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 # The mirror of windows-capture: displays, windows and frames from
 # ScreenCaptureKit, which is the only supported way to capture on macOS 13+.
-screencapturekit = "8"
+# macos_13_0 is not about the deployment target -- it gates the bindings for
+# APIs added in 13.1, and SCWindow::is_active is one of them. Without it there
+# is no way to ask which window is frontmost.
+screencapturekit = { version = "8", features = ["macos_13_0"] }
 # Only for the pointer, which ScreenCaptureKit does not report.
 core-graphics = "0.25"
 # One message send: an NSWindow's windowNumber is its CGWindowID.

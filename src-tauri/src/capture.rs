@@ -64,7 +64,7 @@ pub struct FramePool {
 const POOL_MAX: usize = 4;
 
 impl FramePool {
-    fn take(&self, len: usize) -> Vec<u8> {
+    pub(crate) fn take(&self, len: usize) -> Vec<u8> {
         let mut buffers = self.buffers.lock();
         while let Some(mut buf) = buffers.pop() {
             if buf.capacity() >= len {
@@ -113,7 +113,7 @@ impl Default for LatestFrame {
 }
 
 impl LatestFrame {
-    fn publish(&self, frame: Arc<RawFrame>) {
+    pub(crate) fn publish(&self, frame: Arc<RawFrame>) {
         let mut slot = self.slot.lock();
         if slot.is_some() {
             self.dropped.fetch_add(1, Ordering::Relaxed);

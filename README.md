@@ -111,7 +111,15 @@ tile.
 Both platforms are compiled and linted on every push by
 [`check.yml`](.github/workflows/check.yml) — the macOS backend was written on a
 Windows machine, and a runner is the difference between "it compiles" and "I
-believe it compiles".
+believe it compiles". It found seven real errors the first time it actually
+reached the code, which is the entire argument for having it.
+
+Two macOS-specific notes. The region picker is a transparent full-screen window,
+which on macOS needs Tauri's `macos-private-api` — that rules out the Mac App
+Store, which was never the plan, since this ships directly like every other
+broadcast tool. And the job pins its own Xcode: `screencapturekit` pulls in
+`apple-metal`, whose Swift bridge uses Metal 4 types, so anything older than
+Xcode 26 fails inside a dependency before reaching this project at all.
 
 ## Running it
 

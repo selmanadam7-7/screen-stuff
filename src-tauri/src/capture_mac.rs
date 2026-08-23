@@ -29,7 +29,7 @@ use crate::capture::{FramePool, LatestFrame, RawFrame, Session};
 use crate::sources::SourceId;
 
 use screencapturekit::cm::CMSampleBuffer;
-use screencapturekit::cv::{CVPixelBufferLockFlags, PixelBufferCursorExt as _};
+use screencapturekit::cv::CVPixelBufferLockFlags;
 use screencapturekit::prelude::{
     CMSampleBufferExt as _, PixelFormat, SCContentFilter, SCShareableContent,
     SCStream, SCStreamConfiguration, SCStreamOutputTrait, SCStreamOutputType,
@@ -139,8 +139,9 @@ pub fn start_session(root: &SourceId, key: String) -> Result<Arc<Session>> {
         .with_shows_cursor(true)
         // 120 Hz ceiling, matching the Windows path: the per-stream pacing
         // does the real rate limiting, this only stops a ProMotion display
-        // from flooding the pump.
-        .with_minimum_frame_interval(&screencapturekit::cm::CMTime::new(1, 120, 1, 0));
+        // from flooding the pump. CMTime here is value-over-timescale: one
+        // hundred-and-twentieth of a second.
+        .with_minimum_frame_interval(&screencapturekit::cm::CMTime::new(1, 120));
 
     let mut stream = SCStream::new(&filter, &configuration);
     stream.add_output_handler(
