@@ -418,7 +418,173 @@ mod platform {
     }
 }
 
-#[cfg(not(windows))]
+
+#[cfg(target_os = "macos")]
+mod platform {
+    //! The macOS half of everything the Windows module does.
+    //!
+    //! Displays and windows come from ScreenCaptureKit, so the list the cockpit
+    //! shows and the thing the engine captures are the same objects rather than
+    //! two views that can disagree. The pointer and the focused window come from
+    //! Core Graphics, which is the only place they live.
+
+    use super::{Cursor, Focus, SourceInfo, SourceKind};
+    use screencapturekit::prelude::SCShareableContent;
+
+    fn content() -> Option<SCShareableContent> {
+        SCShareableContent::get().ok()
+    }
+
+    pub fn list_monitors() -> Vec<SourceInfo> {
+        let Some(content) = content() else { return Vec::new() };
+        content
+            .displays()
+            .iter()
+            .enumerate()
+            .map(|(i, display)| {
+                let frame = display.frame();
+                SourceInfo {
+                    // 1-based, matching the Windows side and the way people
+                    // count their own monitors.
+                    id: format!("monitor:{}", i + 1),
+                    kind: SourceKind::Monitor,
+                    title: format!("Display {}", i + 1),
+                    subtitle: format!("{} x {}", display.width(), display.height()),
+                    width: display.width(),
+                    height: display.height(),
+                    x: frame.origin.x as i32,
+                    y: frame.origin.y as i32,
+                    // Core Graphics puts the main display at the origin.
+                    is_primary: frame.origin.x == 0.0 && frame.origin.y == 0.0,
+                }
+            })
+            .collect()
+    }
+
+    pub fn list_windows() -> Vec<SourceInfo> {
+        let Some(content) = content() else { return Vec::new() };
+        let mine = std::process::id();
+        content
+            .windows()
+            .iter()
+            .filter(|w| {
+                // Same rules as the Windows list: on screen, big enough to be
+                // worth showing, and never one of our own.
+                let frame = w.frame();
+                w.is_on_screen()
+                    && frame.size.width >= 160.0
+                    && frame.size.height >= 120.0
+                    && w.owning_application()
+                        .map(|a| a.process_id() as u32 != mine)
+                        .unwrap_or(true)
+            })
+            .map(|w| {
+                let frame = w.frame();
+                let app = w
+                    .owning_application()
+                    .and_then(|a| a.application_name())
+                    .unwrap_or_default();
+                SourceInfo {
+                    id: format!("window:{}", w.window_id()),
+                    kind: SourceKind::Window,
+                    title: w.title().unwrap_or_else(|| app.clone()),
+                    subtitle: app,
+                    width: frame.size.width.max(0.0) as u32,
+                    height: frame.size.height.max(0.0) as u32,
+                    x: frame.origin.x as i32,
+                    y: frame.origin.y as i32,
+                    is_primary: false,
+                }
+            })
+            .collect()
+    }
+
+    pub fn window_is_alive(id: isize) -> bool {
+        crate::capture_mac::window_is_alive(id)
+    }
+
+    pub fn foreground_window_id() -> Option<String> {
+        foreground_focus().map(|f| f.window)
+    }
+
+    /// The frontmost window, and the display holding most of it.
+    pub fn foreground_focus() -> Option<Focus> {
+        let content = content()?;
+        let mine = std::process::id();
+        // `is_active` is ScreenCaptureKit's own notion of the frontmost window,
+        // which is the same one the user would point at.
+        let window = content.windows().into_iter().find(|w| {
+            w.is_active()
+                && w.is_on_screen()
+                && w.owning_application()
+                    .map(|a| a.process_id() as u32 != mine)
+                    .unwrap_or(true)
+        })?;
+        let frame = window.frame();
+        let monitor = monitor_containing(
+            frame.origin.x as i32,
+            frame.origin.y as i32,
+            frame.size.width as i32,
+            frame.size.height as i32,
+        );
+        Some(Focus {
+            window: format!("window:{}", window.window_id()),
+            title: window.title().unwrap_or_default(),
+            x: frame.origin.x as i32,
+            y: frame.origin.y as i32,
+            width: frame.size.width.max(1.0) as u32,
+            height: frame.size.height.max(1.0) as u32,
+            monitor,
+        })
+    }
+
+    fn monitor_containing(x: i32, y: i32, w: i32, h: i32) -> Option<String> {
+        let mut best: Option<(i64, String)> = None;
+        for m in list_monitors() {
+            let ox = (x + w).min(m.x + m.width as i32) - x.max(m.x);
+            let oy = (y + h).min(m.y + m.height as i32) - y.max(m.y);
+            if ox <= 0 || oy <= 0 {
+                continue;
+            }
+            let area = ox as i64 * oy as i64;
+            if best.as_ref().is_none_or(|(a, _)| area > *a) {
+                best = Some((area, m.id.clone()));
+            }
+        }
+        best.map(|(_, id)| id)
+    }
+
+    pub fn cursor_state() -> Option<Cursor> {
+        use core_graphics::event::{CGEvent, CGEventType, CGMouseButton};
+        use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+
+        let source = CGEventSource::new(CGEventSourceStateID::CombinedSessionState).ok()?;
+        let event = CGEvent::new(source).ok()?;
+        let point = event.location();
+        // The same question the Windows side asks GetAsyncKeyState: is the
+        // button down right now, rather than has it been pressed since I asked.
+        let down = CGEventSource::button_state(
+            CGEventSourceStateID::CombinedSessionState,
+            CGMouseButton::Left as u32,
+        );
+        let _ = CGEventType::Null;
+        Some(Cursor { x: point.x as i32, y: point.y as i32, down })
+    }
+
+    pub fn virtual_desktop_bounds() -> (i32, i32, i32, i32) {
+        let monitors = list_monitors();
+        if monitors.is_empty() {
+            return (0, 0, 1920, 1080);
+        }
+        let left = monitors.iter().map(|m| m.x).min().unwrap_or(0);
+        let top = monitors.iter().map(|m| m.y).min().unwrap_or(0);
+        let right = monitors.iter().map(|m| m.x + m.width as i32).max().unwrap_or(1920);
+        let bottom = monitors.iter().map(|m| m.y + m.height as i32).max().unwrap_or(1080);
+        (left, top, right - left, bottom - top)
+    }
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
 mod platform {
     use super::SourceInfo;
     pub fn list_monitors() -> Vec<SourceInfo> {

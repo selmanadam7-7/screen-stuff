@@ -51,6 +51,15 @@ fast_image_resize = "5"
 jpeg-encoder = { version = "0.6", features = ["simd"] }
 
 
+[target.'cfg(target_os = "macos")'.dependencies]
+# The mirror of windows-capture: displays, windows and frames from
+# ScreenCaptureKit, which is the only supported way to capture on macOS 13+.
+screencapturekit = "8"
+# Only for the pointer, which ScreenCaptureKit does not report.
+core-graphics = "0.25"
+# One message send: an NSWindow's windowNumber is its CGWindowID.
+objc2 = "0.6"
+
 [target.'cfg(windows)'.dependencies]
 windows-capture = "1.5"
 # Used only to auto-grant camera and microphone in our own webviews. Must track

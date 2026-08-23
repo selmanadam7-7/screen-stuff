@@ -64,7 +64,7 @@ capture your actual screens, which is what the download is for.
 
 ## Installing it
 
-Windows 10 1809 or newer, 64-bit.
+### Windows 10 1809 or newer, 64-bit
 
 ```powershell
 winget install ScreenStuff
@@ -89,6 +89,29 @@ Releases are signed once a certificate is in place, and
 [`packaging/winget`](packaging/winget) documents the one-time setup for both.
 Until then a downloaded copy trips SmartScreen once: **More info**, then **Run
 anyway**.
+
+### macOS 13 Ventura or newer
+
+```bash
+pnpm install && pnpm tauri build
+```
+
+Capture goes through **ScreenCaptureKit**, which is the mirror of Windows
+Graphics Capture: displays, windows, occluded windows and region crops all come
+from the same API. Everything above it — the shared sessions, the resolution
+ladder, the stage, the guest server — was already portable, so the macOS
+backend is one file, [`src-tauri/src/capture_mac.rs`](src-tauri/src/capture_mac.rs),
+plus a platform module in `sources.rs`.
+
+macOS asks for **Screen Recording** permission the first time you add a screen,
+in System Settings → Privacy & Security. There is no way to request it early and
+no way to detect it beyond trying, so a refusal shows up as the error on the
+tile.
+
+Both platforms are compiled and linted on every push by
+[`check.yml`](.github/workflows/check.yml) — the macOS backend was written on a
+Windows machine, and a runner is the difference between "it compiles" and "I
+believe it compiles".
 
 ## Running it
 

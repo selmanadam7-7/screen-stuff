@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  What macOS shows the person the first time Screen Stuff asks for something.
+
+  Every one of these is a sentence a stranger reads in a system dialog while
+  deciding whether to trust an app they just installed, so each says what it is
+  for rather than what it wants.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Screen Stuff shows your camera as a tile on the board when you add one. Nothing is recorded.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Screen Stuff listens for how loud you are, so the camera can grow while you talk. No audio is recorded, stored or sent.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Screen Stuff puts the displays and windows you choose on a board, and shares the part of it you point at.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Screen Stuff serves a guest link on your network, so people nearby can open the board in a browser.</string>
+  </dict>
+</plist>

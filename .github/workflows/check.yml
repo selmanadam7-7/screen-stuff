@@ -1,0 +1,66 @@
+# Compiles both platforms on every push.
+#
+# The macOS backend is the reason this exists. It is written on a Windows
+# machine, which means the only thing standing between "it compiles" and "I
+# believe it compiles" is a macOS runner. Without this job the ScreenCaptureKit
+# path is a claim rather than a fact.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:web
+      - run: pnpm test
+      - run: pnpm build
+
+  rust:
+    strategy:
+      # Both platforms always report, so a macOS failure is never hidden behind
+      # a Windows one that stopped the matrix early.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+          - os: macos-14
+            name: macos
+    runs-on: ${{ matrix.os }}
+    name: rust (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.name }}
+
+      # Tauri needs these on Linux; on Windows and macOS the toolchain is enough.
+      - name: Build
+        working-directory: src-tauri
+        run: cargo build --all-targets
+
+      - name: Clippy
+        working-directory: src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        working-directory: src-tauri
+        run: cargo test

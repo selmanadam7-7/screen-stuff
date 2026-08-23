@@ -11,6 +11,8 @@
 // Public so the dev harnesses under `examples/` can stand the engine up without
 // the app shell. Nothing here is a stable API for anyone else.
 pub mod capture;
+#[cfg(target_os = "macos")]
+pub mod capture_mac;
 pub mod guest;
 pub mod guest_server;
 pub mod protocol;
@@ -295,6 +297,11 @@ fn allow_media_capture(window: &WebviewWindow) {
     }
 }
 
+/// Nothing to do off Windows.
+///
+/// WKWebView asks the operating system, and macOS remembers the answer against
+/// the app rather than against each webview — so there is no per-window prompt
+/// to pre-answer and no way to be permanently blocked by one misclick.
 #[cfg(not(windows))]
 fn allow_media_capture(_window: &WebviewWindow) {}
 
@@ -539,9 +546,30 @@ fn window_source_id(window: &WebviewWindow) -> CmdResult<String> {
     Ok(format!("window:{}", hwnd.0 as isize))
 }
 
-#[cfg(not(windows))]
+/// The window's id, as ScreenCaptureKit knows it.
+///
+/// An `NSWindow`'s `windowNumber` *is* the `CGWindowID` that Core Graphics and
+/// ScreenCaptureKit use, so the same number identifies the window to both the
+/// window server and the capture API. There is no separate lookup.
+#[cfg(target_os = "macos")]
+fn window_source_id(window: &WebviewWindow) -> CmdResult<String> {
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+
+    let ns_window = window.ns_window().map_err(oops)? as *mut AnyObject;
+    if ns_window.is_null() {
+        return Err("that window has no handle yet".to_string());
+    }
+    let number: isize = unsafe { msg_send![ns_window, windowNumber] };
+    if number <= 0 {
+        return Err("that window is not on screen".to_string());
+    }
+    Ok(format!("window:{number}"))
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
 fn window_source_id(_window: &WebviewWindow) -> CmdResult<String> {
-    Err("web tiles need Windows".to_string())
+    Err("web tiles need Windows or macOS".to_string())
 }
 
 #[tauri::command]

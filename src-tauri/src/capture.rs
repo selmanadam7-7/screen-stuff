@@ -36,6 +36,11 @@ pub struct RawFrame {
 }
 
 impl RawFrame {
+    /// Wrap pixels a platform backend has already put in RGBA order.
+    pub fn new(width: u32, height: u32, data: Vec<u8>, pool: Weak<FramePool>) -> Self {
+        Self { width, height, data, pool }
+    }
+
     pub fn pixels(&self) -> &[u8] {
         &self.data
     }
@@ -271,13 +276,47 @@ impl Feeds {
 pub struct Session {
     pub key: String,
     pub latest: Arc<LatestFrame>,
+    /// Held so the pool outlives every frame that came from it.
+    ///
+    /// Nothing reads it: the backend's pump owns the other reference and the
+    /// frames hold weak ones. When the session goes, so does the pool, and the
+    /// buffers with it.
+    #[allow(dead_code)]
     pool: Arc<FramePool>,
+    /// Watched by the capture backend where it polls, set by `stop` regardless.
     halt: Arc<AtomicBool>,
+    /// Tears the platform capture down, for backends that do not poll a flag.
+    ///
+    /// Windows Graphics Capture watches the flag above and needs nothing here.
+    /// ScreenCaptureKit has to be told, and waiting for the last reference to
+    /// drop would mean the capture stops whenever the allocator gets round to
+    /// it rather than when the operator took the tile off the board.
+    stopper: Mutex<Option<Box<dyn FnOnce() + Send>>>,
     native: Mutex<(u32, u32)>,
     refs: AtomicUsize,
 }
 
 impl Session {
+    /// Build a session around a capture a platform backend has already started.
+    pub fn new(
+        key: String,
+        latest: Arc<LatestFrame>,
+        pool: Arc<FramePool>,
+        halt: Arc<AtomicBool>,
+        stopper: Option<Box<dyn FnOnce() + Send>>,
+        native: (u32, u32),
+    ) -> Self {
+        Self {
+            key,
+            latest,
+            pool,
+            halt,
+            stopper: Mutex::new(stopper),
+            native: Mutex::new(native),
+            refs: AtomicUsize::new(0),
+        }
+    }
+
     pub fn native_size(&self) -> (u32, u32) {
         *self.native.lock()
     }
@@ -288,6 +327,9 @@ impl Session {
 
     fn stop(&self) {
         self.halt.store(true, Ordering::Release);
+        if let Some(stop) = self.stopper.lock().take() {
+            stop();
+        }
         self.latest.end();
     }
 }
@@ -530,22 +572,19 @@ fn start_session(root: &SourceId, key: String) -> Result<Arc<Session>> {
         }
     };
 
-    let session = Arc::new(Session {
-        key,
-        latest,
-        pool,
-        halt,
-        native: Mutex::new((native_w, native_h)),
-        refs: AtomicUsize::new(0),
-    });
-    // Silence the unused-field warning on non-Windows builds without cfg noise.
-    let _ = &session.pool;
-    Ok(session)
+    // Windows Graphics Capture watches the halt flag itself, so there is
+    // nothing extra to tear down.
+    Ok(Arc::new(Session::new(key, latest, pool, halt, None, (native_w, native_h))))
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+fn start_session(root: &SourceId, key: String) -> Result<Arc<Session>> {
+    crate::capture_mac::start_session(root, key)
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
 fn start_session(_root: &SourceId, _key: String) -> Result<Arc<Session>> {
-    Err(anyhow!("screen capture is only implemented for Windows"))
+    Err(anyhow!("screen capture needs Windows or macOS"))
 }
 
 // ---------------------------------------------------------------------------
@@ -898,14 +937,14 @@ fn render_jpeg(
 /// teardown rules can be tested without a real screen.
 #[cfg(test)]
 fn fake_session(key: &str) -> Arc<Session> {
-    Arc::new(Session {
-        key: key.to_string(),
-        latest: Arc::new(LatestFrame::default()),
-        pool: Arc::new(FramePool::default()),
-        halt: Arc::new(AtomicBool::new(false)),
-        native: Mutex::new((1920, 1080)),
-        refs: AtomicUsize::new(0),
-    })
+    Arc::new(Session::new(
+        key.to_string(),
+        Arc::new(LatestFrame::default()),
+        Arc::new(FramePool::default()),
+        Arc::new(AtomicBool::new(false)),
+        None,
+        (1920, 1080),
+    ))
 }
 
 #[cfg(test)]
