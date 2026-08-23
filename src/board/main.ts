@@ -27,6 +27,7 @@ interface BoardState {
   doc: BoardDoc;
   frame: Rect;
   pointer: { x: number; y: number; down: boolean } | null;
+  cameraEmphasis: number;
   revision: number;
   dirty: boolean;
   connected: boolean;
@@ -39,6 +40,7 @@ const state: BoardState = {
   doc: emptyBoard(),
   frame: { ...emptyBoard().frame },
   pointer: null,
+  cameraEmphasis: 0,
   revision: 0,
   dirty: true,
   connected: false,
@@ -112,6 +114,7 @@ function applySnapshot(snapshot: Snapshot) {
   state.doc = snapshot.doc;
   state.frame = snapshot.frame;
   state.pointer = snapshot.pointer ?? null;
+  state.cameraEmphasis = snapshot.cameraEmphasis ?? 0;
   if (snapshot.revision !== state.revision) {
     state.revision = snapshot.revision;
   }
@@ -188,6 +191,7 @@ function tick(now: number) {
     doc: state.doc,
     media: pool ?? { resolve: () => null },
     now,
+    cameraEmphasis: state.cameraEmphasis,
     pointer: state.pointer
       ? {
           at: { x: state.pointer.x, y: state.pointer.y },

@@ -21,6 +21,8 @@ export interface Snapshot {
   frame: Rect;
   /** Where the operator is pointing, for the spotlight. Null when it is off. */
   pointer?: { x: number; y: number; down: boolean } | null;
+  /** How much the camera is emphasised right now, 0 to 1. */
+  cameraEmphasis?: number;
   /** Bumped whenever the cockpit wants the board to hard-refresh its media. */
   revision: number;
   clean: boolean;

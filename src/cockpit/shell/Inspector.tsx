@@ -417,6 +417,8 @@ function SourceGroup({ tile }: { tile: SourceTile }) {
 }
 
 function CameraGroup({ tile }: { tile: CameraTile }) {
+  const autoCamera = useStore((s) => s.autoCamera);
+  const micError = useStore((s) => s.micError);
   const store = useActions();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
@@ -457,6 +459,17 @@ function CameraGroup({ tile }: { tile: CameraTile }) {
         checked={tile.mirrored}
         onChange={(mirrored) => store.patchTile(tile.id, { mirrored } as Partial<Tile>)}
       />
+      <Switch
+        label="Grow while I talk"
+        hint="Listens to the microphone for one number — how loud. Nothing is recorded or sent."
+        checked={autoCamera}
+        onChange={(on) => store.setAutoCamera(on)}
+      />
+      {micError && (
+        <p className="inspector__note">
+          The microphone would not open: {micError}
+        </p>
+      )}
     </Group>
   );
 }

@@ -16,6 +16,7 @@ import { fitInto, rectCenter, tileRect } from "./geometry";
 import { strokeOpacity } from "./doc";
 import { countdownText, lowerThirdRect } from "./overlays";
 import { redactionsOf, toBoardRect } from "./redact";
+import { emphasisedRect } from "./voice";
 import { stageHandles, stageTabFor } from "./stage";
 import { readTheme, type Theme } from "./theme";
 import type { BoardDoc, Rect, Stroke, Tile, Vec2 } from "./types";
@@ -89,6 +90,14 @@ export interface RenderInput {
   } | null;
   /** Resolved design tokens. Read from the document when not supplied. */
   theme?: Theme;
+  /**
+   * How much the camera is emphasised, 0 to 1.
+   *
+   * Kept out of the document deliberately: it changes many times a second while
+   * someone is talking, and putting that in the document would fill the undo
+   * stack and the autosave with somebody's sentences.
+   */
+  cameraEmphasis?: number;
 }
 
 /** Everything the chrome needs, derived from the tokens for the current look. */
@@ -152,6 +161,14 @@ export function renderBoard(input: RenderInput): void {
 
 function drawTile(input: RenderInput, tile: Tile, scale: number, theme: Theme) {
   const { ctx, media } = input;
+  // A camera grows while its owner is talking. Everything below works off this
+  // box, so the title bar, the redactions and the outline all follow it.
+  const emphasis = input.cameraEmphasis ?? 0;
+  const grown =
+    tile.kind === "camera" && emphasis > 0.001
+      ? emphasisedRect(tile, input.doc.frame, emphasis)
+      : null;
+  if (grown) tile = { ...tile, ...grown };
   const box = tileRect(tile);
   const center = rectCenter(box);
   const bar = hasTitleBar(tile) ? Math.min(TILE_BAR, box.h * 0.16) : 0;

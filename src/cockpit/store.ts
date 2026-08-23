@@ -145,6 +145,12 @@ export interface CockpitState {
   redacting: boolean;
   /** Show the audience a ring where the pointer is. */
   spotlightCursor: boolean;
+  /** Let the camera grow while you are talking. */
+  autoCamera: boolean;
+  /** How much it is grown right now, 0 to 1. */
+  cameraEmphasis: number;
+  /** Set when the microphone could not be opened, so the UI can say so. */
+  micError: string | null;
   /** Where the pointer is, in board space, or null when it is off the board. */
   pointerAt: { x: number; y: number; down: boolean } | null;
   /** The shot the stage will return to when the punch-in is let go. */
@@ -232,6 +238,9 @@ export interface Actions {
   /** Arm the tool that draws a never-shared rectangle on a tile. */
   setRedacting(on: boolean): void;
   setSpotlightCursor(on: boolean): void;
+  setAutoCamera(on: boolean): void;
+  setCameraEmphasis(value: number): void;
+  setMicError(message: string | null): void;
   setPointerAt(at: { x: number; y: number; down: boolean } | null): void;
   /** Fly the stage to a tight shot around the cursor, and remember where it was. */
   punchIn(rect: Rect): void;
@@ -332,6 +341,9 @@ export const useStore = create<Store>((set, get) => ({
   autoFrameOn: null,
   redacting: false,
   spotlightCursor: false,
+  autoCamera: false,
+  cameraEmphasis: 0,
+  micError: null,
   pointerAt: null,
   punchedFrom: null,
   panMode: false,
@@ -866,6 +878,31 @@ export const useStore = create<Store>((set, get) => ({
     set({ ink: { ...get().ink, ...patch } });
   },
 
+  setAutoCamera(on) {
+    set({ autoCamera: on, micError: null });
+    if (!on) set({ cameraEmphasis: 0 });
+    get().toast(
+      on ? "the camera will grow while you talk" : "the camera stays the size you set",
+    );
+    void api.settingsGet().then((settings) =>
+      api.settingsSet({ ...(settings as object), autoCamera: on }),
+    );
+    get().pushSnapshot();
+  },
+
+  setCameraEmphasis(value) {
+    // Runtime only, never the document: this changes many times a second while
+    // somebody is talking, and the undo stack is not a transcript.
+    if (Math.abs(value - get().cameraEmphasis) < 0.004) return;
+    set({ cameraEmphasis: value });
+    get().pushSnapshot();
+  },
+
+  setMicError(message) {
+    set({ micError: message });
+    if (message) get().toast(`could not listen: ${message}`, "warn");
+  },
+
   setSpotlightCursor(on) {
     set({ spotlightCursor: on, pointerAt: on ? get().pointerAt : null });
     get().toast(on ? "they can see where you point" : "the pointer ring is off");
@@ -1129,6 +1166,7 @@ export const useStore = create<Store>((set, get) => ({
       doc: state.doc,
       frame: state.frame,
       pointer: state.spotlightCursor ? state.pointerAt : null,
+      cameraEmphasis: state.cameraEmphasis,
       revision: state.revision,
       clean: true,
     });

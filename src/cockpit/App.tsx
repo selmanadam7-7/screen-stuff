@@ -5,6 +5,8 @@ import { FrameClient } from "../core/frames";
 import type { MediaPool } from "../core/media";
 import { AutoFramer, targetFor, type AutoFrameMode } from "../core/autoframe";
 import { cursorOnBoard, punchRect } from "../core/pointer";
+import { SpeechGate, approach } from "../core/voice";
+import { MicLevel } from "./mic";
 import { isTyping } from "./Editor";
 import type { Stroke } from "../core/types";
 import { TooltipHost, cx } from "../ui/primitives";
@@ -54,6 +56,7 @@ function Cockpit() {
   const boardVisible = useStore((s) => s.boardVisible);
   const autoFrame = useStore((s) => s.autoFrame);
   const spotlightCursor = useStore((s) => s.spotlightCursor);
+  const autoCamera = useStore((s) => s.autoCamera);
   const [punchKeyHeld, setPunchKeyHeld] = useState(false);
   const store = useActions();
   const shellRef = useRef<HTMLDivElement>(null);
@@ -75,11 +78,13 @@ function Cockpit() {
         followView?: boolean;
         autoFrame?: AutoFrameMode;
         spotlightCursor?: boolean;
+        autoCamera?: boolean;
       }>()
       .then((settings) => {
         if (settings?.look) store.setLook(settings.look);
         if (settings?.followView === true) store.setFollowView(true);
         if (settings?.spotlightCursor === true) store.setSpotlightCursor(true);
+        if (settings?.autoCamera === true) store.setAutoCamera(true);
         if (settings?.autoFrame && settings.autoFrame !== "off") {
           store.setAutoFrame(settings.autoFrame);
         }
@@ -198,6 +203,38 @@ function Cockpit() {
       window.removeEventListener("keyup", up);
     };
   }, []);
+
+  /* --- the camera grows while you are talking ---------------------------- */
+  useEffect(() => {
+    if (!autoCamera) return;
+    const mic = new MicLevel();
+    const gate = new SpeechGate();
+    let emphasis = 0;
+    let last = performance.now();
+    let raf = 0;
+
+    // The gate decides speaking or not; this eases the size toward it, so the
+    // camera never snaps between two sizes on a syllable.
+    const ease = () => {
+      raf = requestAnimationFrame(ease);
+      const now = performance.now();
+      const dt = now - last;
+      last = now;
+      emphasis = approach(emphasis, gate.speaking ? 1 : 0, dt);
+      useStore.getState().setCameraEmphasis(emphasis);
+    };
+
+    void mic.start((level) => gate.push(level, performance.now())).then(() => {
+      if (mic.error) useStore.getState().setMicError(mic.error);
+      else raf = requestAnimationFrame(ease);
+    });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      mic.stop();
+      useStore.getState().setCameraEmphasis(0);
+    };
+  }, [autoCamera]);
 
   /* --- keyboard, sources, boards, and what the other windows report ------ */
   useEffect(() => {

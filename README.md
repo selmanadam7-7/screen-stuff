@@ -252,6 +252,25 @@ was saved with "back in a minute" up does not put you back behind it.
 you do, sized as a proportion of the stage so it looks the same on a punched-in
 shot as on the whole board.
 
+## A camera that knows when you are talking
+
+**Grow while I talk**, on a camera tile. When you speak, the camera grows; when
+you go quiet and start typing, it settles back and the screen takes over. On a
+normal call the camera is a fixed box whether you are mid-sentence or silently
+reading a stack trace, and a human director would never do that.
+
+The whole difficulty is hysteresis. Speech has gaps between words and pauses
+between sentences, so a gate that follows the level directly pumps several times
+a second and is unwatchable. It opens in 140 ms, because being late to your own
+sentence looks broken, and takes 1.4 s of real quiet to let go, because a pause
+is not the end of talking.
+
+**What it does with the microphone:** opens it only while the switch is on,
+reads one number — how loud — about thirty times a second, and closes it the
+moment you turn it off. Nothing is recorded, stored or sent; the audio never
+leaves the Web Audio graph. The size itself is runtime state and never touches
+the document, because the undo stack is not a transcript.
+
 ## Audio, honestly
 
 A webcam is a video-only device. When an app asks Windows for "the camera" it
