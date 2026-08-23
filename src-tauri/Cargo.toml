@@ -32,6 +32,8 @@ axum = { version = "0.7", features = ["ws"] }
 tower-http = { version = "0.6", features = ["cors", "fs"] }
 futures-util = "0.3"
 
+# The control API hands PNGs back as data URLs; this turns them into bytes.
+base64 = "0.22"
 anyhow = "1"
 thiserror = "2"
 parking_lot = "0.12"
@@ -79,6 +81,9 @@ windows = { version = "0.60", features = [
 
 [dev-dependencies]
 tempfile = "3"
+# Lets the control API's timeout be tested in a millisecond instead of
+# four seconds, by moving the clock rather than waiting on it.
+tokio = { version = "1", features = ["test-util"] }
 
 [features]
 default = ["custom-protocol"]

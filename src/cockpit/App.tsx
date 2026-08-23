@@ -16,6 +16,7 @@ import { isTyping } from "./Editor";
 import type { Stroke } from "../core/types";
 import { TooltipHost, cx } from "../ui/primitives";
 import { CameraFeeds } from "./cameraFeeds";
+import { installControlBridge } from "./controlBridge";
 import { Editor } from "./Editor";
 import { addByExtension } from "./Panels";
 import { RegionPicker, REGION_PICKED_EVENT } from "./RegionPicker";
@@ -119,6 +120,64 @@ function Cockpit() {
         }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* --- the stage finishes moving even when nothing is drawing ------------- */
+  //
+  // The canvas render loop normally advances the stage animation, but it only
+  // runs while the board page is on screen and the window is not minimised.
+  // Before the control API that was invisible: you could not start a stage move
+  // without looking at the board. Now a Stream Deck can, from the Settings page
+  // or from behind another window, and the move would start and never finish —
+  // leaving the audience looking at a shot stopped halfway.
+  //
+  // A timer rather than another rAF: a hidden window throttles timers instead
+  // of stopping them, so the worst case is a move that lands late rather than
+  // one that never lands. It only exists while something is in flight, and it
+  // is harmless alongside the render loop because a tick is a pure function of
+  // the clock.
+  useEffect(() => {
+    let timer = 0;
+    const stop = () => {
+      if (timer) window.clearInterval(timer);
+      timer = 0;
+    };
+    const check = ({ frameAnimStart }: { frameAnimStart: number | null }) => {
+      if (frameAnimStart === null) stop();
+      else if (!timer) {
+        timer = window.setInterval(
+          () => useStore.getState().tickFrameAnimation(performance.now()),
+          24,
+        );
+      }
+    };
+    check(useStore.getState());
+    const off = useStore.subscribe(check);
+    return () => {
+      off();
+      stop();
+    };
+  }, []);
+
+  /* --- the control API --------------------------------------------------- */
+  //
+  // The bridge is installed unconditionally and the *server* is what is opt-in:
+  // the cockpit answering requests nobody can send costs one dormant listener,
+  // and doing it this way means the API works the moment it is switched on
+  // rather than after a restart nobody was told about.
+  useEffect(() => {
+    if (isDemo()) return;
+    const stop = installControlBridge(() => poolRef.current);
+    void (async () => {
+      const saved = await api.settingsGet<{ controlOn?: boolean; controlPort?: number; controlToken?: string }>();
+      if (!saved?.controlOn || !saved.controlToken) return;
+      try {
+        await api.controlStart(saved.controlPort ?? 0, saved.controlToken);
+      } catch {
+        // A taken port is not a reason to fail to start; Settings shows why.
+      }
+    })();
+    return stop;
   }, []);
 
   /* --- the capture engine ------------------------------------------------ */

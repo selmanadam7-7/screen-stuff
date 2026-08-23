@@ -31,12 +31,14 @@ import {
   Field,
   Group,
   IconButton,
+  NumberField,
   SearchField,
   Select,
   Switch,
   Tabs,
   cx,
 } from "../../ui/primitives";
+import { ACTIONS } from "../../core/control";
 import type { Tile } from "../../core/types";
 import { LOOKS, useActions, useStore } from "../store";
 import { addByExtension } from "../Panels";
@@ -352,6 +354,133 @@ async function pickFiles(store: ReturnType<typeof useActions>) {
    Settings
    ========================================================================== */
 
+/**
+ * Turning the control API on, and the one line that proves it works.
+ *
+ * The example is a real request against this machine's own port and token, so
+ * the first thing anyone does with the API is watch it work rather than read
+ * about it. It moves the stage to a preset, which is visible from across a room
+ * and undoes itself with one click of Show me the stage.
+ */
+function ControlSettings() {
+  const [status, setStatus] = useState<api.ControlStatus | null>(null);
+  const [port, setPort] = useState(4488);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const [live, saved] = await Promise.all([
+        api.controlStatus(),
+        api.settingsGet<{ controlPort?: number }>(),
+      ]);
+      setStatus(live);
+      setPort(live.running ? live.port : (saved.controlPort ?? 4488));
+    })();
+  }, []);
+
+  /** Both halves of the switch, so the button can never lie about the state. */
+  const set = async (on: boolean) => {
+    setBusy(true);
+    setProblem(null);
+    try {
+      const saved = await api.settingsGet<Record<string, unknown>>();
+      if (!on) {
+        setStatus(await api.controlStop());
+        // Remembered, so it does not come back by itself after a restart.
+        await api.settingsSet({ ...saved, controlOn: false });
+      } else {
+        // The token is kept rather than regenerated: a script written once
+        // should still work next week, and it cannot if this changes nightly.
+        const token = (saved.controlToken as string) || (await api.controlNewToken());
+        const next = await api.controlStart(port, token);
+        await api.settingsSet({
+          ...saved,
+          controlOn: true,
+          controlToken: token,
+          controlPort: next.port,
+        });
+        setStatus(next);
+      }
+    } catch (err) {
+      setProblem(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const roll = async () => {
+    const token = await api.controlNewToken();
+    const saved = await api.settingsGet<Record<string, unknown>>();
+    await api.settingsSet({ ...saved, controlToken: token });
+    if (status?.running) setStatus(await api.controlStart(port, token));
+    else setStatus({ running: false, port, token, url: "" });
+  };
+
+  const example = status?.running
+    ? `curl -X POST "${status.url}/stage?token=${status.token}" -H "content-type: application/json" -d "{\"preset\":\"everything\"}"`
+    : "";
+
+  return (
+    <Group title="Other software on this machine">
+      <p className="settings__note">
+        Lets a Stream Deck, a script or anything else on this computer do what
+        you can do — cut to a scene, raise a card, grab the shot. It listens on
+        this machine only: the guest link and the tunnel have no route into it,
+        so turning this on does not put a control surface on the internet.
+      </p>
+      <Switch
+        label="Let other software drive Screen Stuff"
+        hint={`${Object.keys(ACTIONS).length - 1} actions, over plain HTTP on this machine.`}
+        checked={status?.running ?? false}
+        disabled={busy}
+        onChange={(on) => void set(on)}
+      />
+
+      {status?.running ? (
+        <>
+          <Field label="Address" inline>
+            <span className="readout numeric">{status.url}</span>
+          </Field>
+          <Field label="Token">
+            <span className="readout numeric">{status.token}</span>
+          </Field>
+          <p className="settings__note">
+            Try it — this moves the stage around everything on the board:
+          </p>
+          <pre className="settings__code">{example}</pre>
+          <div className="btn-row">
+            <Button
+              block
+              onClick={async () => {
+                await navigator.clipboard.writeText(example);
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1600);
+              }}
+            >
+              {copied ? "Copied" : "Copy that line"}
+            </Button>
+            <Button block onClick={() => void roll()}>
+              New token
+            </Button>
+          </div>
+          <p className="settings__note">
+            <code>GET {status.url}/</code> lists every action and what it takes.
+            Anything the token reaches can move what your audience sees, so treat
+            it the way you would a password.
+          </p>
+        </>
+      ) : (
+        <Field label="Port" inline>
+          <NumberField value={port} min={1024} max={65535} onCommit={setPort} disabled={busy} />
+        </Field>
+      )}
+      {problem ? <p className="settings__problem">{problem}</p> : null}
+    </Group>
+  );
+}
+
 export function SettingsPage() {
   const doc = useStore((s) => s.doc);
   const look = useStore((s) => s.look);
@@ -465,6 +594,8 @@ export function SettingsPage() {
             onChange={(showGrid) => store.setBoardProp({ showGrid })}
           />
         </Group>
+
+        <ControlSettings />
 
         <Group title="Keyboard">
           <dl className="keys">

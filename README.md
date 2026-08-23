@@ -421,6 +421,50 @@ the connection is still standing afterwards.
 Cursor colours come from hashing the name, so the same person is the same colour
 twice, on every machine.
 
+## Driving it from something else
+
+Whoever is running this has both hands busy — they are presenting. So everything
+the operator can do is available to anything else on the machine: a Stream Deck,
+a script, the hotkey daemon they already live in.
+
+Turn it on in **Settings → Other software on this machine**. It is off until you
+do, because a control surface that appears by itself is a surprise, and this one
+can move what an audience sees.
+
+```bash
+curl -X POST "http://127.0.0.1:4488/stage" \
+  -H "X-Control-Token: YOUR_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"tile":"Code"}'
+```
+
+```
+GET  /            every action, generated from the table that runs them
+GET  /state       what is on air right now
+GET  /sources     screens and windows you could add
+GET  /shot        a PNG of the shot, from the renderer the audience is watching
+GET  /events      a WebSocket: state, every time it changes
+POST /<action>    stage, layout, scene, card, tile, add, take, punch, guests, …
+```
+
+Three things shape it. **Answers say what happened** — the stage it actually
+landed on, the tile it actually found — because a caller who gets `{ok: true}`
+cannot tell a working button from a broken one. **Refusals are sentences**: ask
+for a tile that is not there and you get the names of the ones that are.
+**Things are addressed the way a person would** — `{"tile": "code"}` finds the
+tile labelled Code — and two matches is a refusal rather than a guess, because
+cutting to the wrong thing mid-call is worse than doing nothing.
+
+It listens on `127.0.0.1` only; the guest server and the tunnel have no route
+into it. Every request needs the token, and any request carrying an `Origin`
+header is refused outright — curl, Python, Node and a Stream Deck plugin send no
+such header, and a web page cannot avoid sending one, so a page that somehow
+learned your token still cannot drive your app.
+
+[`packaging/control`](packaging/control) has the wrapper that reads the token
+out of your own settings so nothing has to be pasted into a Stream Deck button,
+plus the six buttons worth binding first.
+
 ## Boards
 
 Boards save whole — layout, tiles, ink, scenes, hotkeys — as JSON under
@@ -482,6 +526,12 @@ read every screen you own.
 
 Debug builds log the full stream URL so the cockpit can be opened in a browser
 against a running engine. Release builds never do.
+
+The control API is a second door and is treated as one: off until switched on,
+loopback only, its own token, and closed to anything sending an `Origin` header.
+Its token is deliberately *not* regenerated per launch — a Stream Deck button
+that stops working every morning is not a Stream Deck button — so it is stored
+in settings and can be rolled from the same panel that shows it.
 
 ## Development tools
 

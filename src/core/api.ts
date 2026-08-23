@@ -363,6 +363,43 @@ export async function guestPublish(
   return invoke<void>("guest_publish", { doc, frame, powers });
 }
 
+// --- the control API ------------------------------------------------------
+
+/** Where other software on this machine can reach the app. */
+export interface ControlStatus {
+  running: boolean;
+  port: number;
+  token: string;
+  /** The origin, ready to paste into a terminal. */
+  url: string;
+}
+
+const CONTROL_OFF: ControlStatus = { running: false, port: 0, token: "", url: "" };
+
+export const controlStart = (port: number, token: string) =>
+  runningInTauri()
+    ? invoke<ControlStatus>("control_start", { port, token })
+    : Promise.resolve(CONTROL_OFF);
+
+export const controlStop = () =>
+  runningInTauri() ? invoke<ControlStatus>("control_stop") : Promise.resolve(CONTROL_OFF);
+
+export const controlStatus = () =>
+  runningInTauri() ? invoke<ControlStatus>("control_status") : Promise.resolve(CONTROL_OFF);
+
+export const controlNewToken = () =>
+  runningInTauri() ? invoke<string>("control_new_token") : Promise.resolve("");
+
+/** The cockpit telling the API what is on the board now. */
+export const controlPublish = (board: unknown) =>
+  runningInTauri() ? invoke<void>("control_publish", { board }) : Promise.resolve();
+
+/** The cockpit answering one request. */
+export const controlReply = (id: number, result: unknown, error: string | undefined) =>
+  runningInTauri()
+    ? invoke<void>("control_reply", { id, result: result ?? null, error: error ?? null })
+    : Promise.resolve();
+
 // --- region picker --------------------------------------------------------
 
 export const openRegionPicker = () =>

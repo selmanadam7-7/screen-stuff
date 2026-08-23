@@ -742,6 +742,30 @@
   color: var(--ink-3);
 }
 
+/* A command line, to be selected and pasted rather than read. Scrolls inside
+   itself: wrapping a curl line in the middle of a JSON body turns a thing you
+   can copy into a thing you have to reassemble. */
+.settings__code {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--panel-alt);
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: var(--t-11);
+  line-height: 1.55;
+  overflow-x: auto;
+  white-space: pre;
+  user-select: all;
+}
+.settings__problem {
+  margin: 0;
+  font-size: var(--t-11);
+  line-height: 1.5;
+  color: var(--danger);
+}
+
 /* minmax(0, 1fr), not 1fr: a bare 1fr track will not shrink below its
    content's min-content width, and a text input reports about twenty
    characters — which pushed the second column straight off the panel. */

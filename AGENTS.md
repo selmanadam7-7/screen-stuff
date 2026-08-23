@@ -84,8 +84,8 @@ If the request is to change the app rather than install it:
 ```bash
 pnpm install
 pnpm app          # run it
-pnpm test         # 177 frontend tests
-pnpm test:rust    # 70 Rust tests
+pnpm test         # 369 frontend tests
+pnpm test:rust    # 91 Rust tests
 pnpm check        # types and clippy, both must be clean
 ```
 
@@ -107,6 +107,20 @@ Three traps that will cost you an afternoon if you rediscover them:
 - A grid track written `1fr` or `auto` will not shrink below its content's
   min-content width, and a text input reports about twenty characters. Use
   `minmax(0, 1fr)`. Two shipped layout bugs came from exactly this.
+
+**Two platforms, one of which you probably cannot run.** Capture is the only
+platform-specific part: `capture.rs` on Windows, `capture_mac.rs` on macOS,
+everything above them shared. The macOS half was written on a Windows machine,
+so `.github/workflows/check.yml` builds, clippies and tests both — that job is
+the only thing standing between "it compiles" and "I believe it compiles". Do
+not claim macOS behaviour you have not seen run.
+
+**Anything the operator can do, the control API can do too.** `src/core/control.ts`
+is the table of actions and `GET /` is generated from it, so adding an action
+documents it. Two rules there are load-bearing: the target must read *through*
+to the live store rather than a snapshot of it (`liveTarget`) or every action
+answers with the state from before its own change, and every request must get a
+reply, because a caller is holding a socket open and silence is a hung button.
 
 **The brand is a folder, not a drawing.** `assets/brand` holds the icon, the
 mark and the illustrations, and two scripts copy them into place:

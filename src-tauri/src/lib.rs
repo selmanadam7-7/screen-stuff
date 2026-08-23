@@ -13,6 +13,7 @@
 pub mod capture;
 #[cfg(target_os = "macos")]
 pub mod capture_mac;
+pub mod control;
 pub mod guest;
 pub mod guest_server;
 pub mod protocol;
@@ -22,6 +23,7 @@ pub mod store;
 pub mod tunnel;
 
 use capture::CaptureEngine;
+use control::{ControlHub, ControlStatus};
 use guest::{GuestHub, GuestInfo, Powers};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -44,6 +46,8 @@ pub struct AppState {
     guests: Arc<GuestHub>,
     /// The public door onto the guest server, when one is open.
     tunnel: Arc<tunnel::Tunnel>,
+    /// The door for other software on this machine. Closed until asked.
+    control: Arc<ControlHub>,
 }
 
 #[derive(Serialize)]
@@ -347,6 +351,61 @@ fn guest_status(state: tauri::State<'_, AppState>) -> GuestStatus {
 }
 
 /// Tell guests what to render. Called by the cockpit whenever the board changes.
+/// Open the control API on a port, with a token that outlives the launch.
+///
+/// Both come from settings rather than being generated here: a script written
+/// once should keep working tomorrow, and it cannot if the address moves.
+#[tauri::command]
+async fn control_start(
+    state: tauri::State<'_, AppState>,
+    port: u16,
+    token: String,
+) -> Result<ControlStatus, String> {
+    let port = if port == 0 { control::DEFAULT_PORT } else { port };
+    control::start(state.control.clone(), port, token).await.map_err(|e| format!("{e:#}"))
+}
+
+#[tauri::command]
+fn control_stop(state: tauri::State<'_, AppState>) -> ControlStatus {
+    state.control.stop();
+    state.control.status()
+}
+
+#[tauri::command]
+fn control_status(state: tauri::State<'_, AppState>) -> ControlStatus {
+    state.control.status()
+}
+
+/// A fresh token, for when the old one has been somewhere it should not have.
+#[tauri::command]
+fn control_new_token() -> String {
+    control::new_token()
+}
+
+/// The cockpit telling the API what is on the board now.
+#[tauri::command]
+fn control_publish(state: tauri::State<'_, AppState>, board: serde_json::Value) {
+    state.control.publish(board);
+}
+
+/// The cockpit answering one request.
+///
+/// `error` rather than a `Result` because the failure is the cockpit's verdict
+/// on the request, not a failure of this command — this call always succeeds.
+#[tauri::command]
+fn control_reply(
+    state: tauri::State<'_, AppState>,
+    id: u64,
+    result: Option<serde_json::Value>,
+    error: Option<String>,
+) {
+    let answer = match error {
+        Some(why) => Err(why),
+        None => Ok(result.unwrap_or(serde_json::Value::Null)),
+    };
+    state.control.resolve(id, answer);
+}
+
 #[tauri::command]
 fn guest_publish(
     state: tauri::State<'_, AppState>,
@@ -775,6 +834,15 @@ pub fn run() {
                 }
             }
 
+            // A control request reaches the cockpit the same way a guest's
+            // does: as a window event. The cockpit answers with `control_reply`,
+            // and until it does the HTTP caller is still waiting on its socket.
+            let control = Arc::new(ControlHub::default());
+            let control_handle = app.handle().clone();
+            control.attach(Box::new(move |request| {
+                let _ = control_handle.emit_to("main", "sd:control", request);
+            }));
+
             // Anything a guest does reaches the cockpit as a normal window event.
             let events_handle = app.handle().clone();
             let hub_for_events = guest_hub.clone();
@@ -808,6 +876,7 @@ pub fn run() {
                 interacting_web: Mutex::new(HashSet::new()),
                 guests: guest_hub,
                 tunnel: Arc::new(tunnel::Tunnel::default()),
+                control,
             });
             Ok(())
         })
@@ -849,6 +918,12 @@ pub fn run() {
             media_import,
             media_adopt,
             guest_publish,
+            control_start,
+            control_stop,
+            control_status,
+            control_new_token,
+            control_publish,
+            control_reply,
             web_source_open,
             web_source_navigate,
             web_source_reload,
@@ -863,6 +938,7 @@ pub fn run() {
         .run(|app, event| {
             if let tauri::RunEvent::ExitRequested { .. } = event {
                 if let Some(state) = app.try_state::<AppState>() {
+                    state.control.stop();
                     state.guests.stop();
                     state.engine.shutdown();
                 }
