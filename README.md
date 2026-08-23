@@ -186,6 +186,17 @@ different shot. Two properties make it safe to leave on: it can only frame
 something already on the board, so it can never reveal what you did not put
 there; and touching the stage hands control straight back.
 
+**Showing where you point.** Zoomed out to four monitors, a real cursor is about
+two pixels in the output, which is why "it's right there" is the most repeated
+sentence on any screen share. **Show my pointer** draws a ring where your cursor
+is and a ripple when you click — on the output only, since you can already see
+your own mouse.
+
+**Punching in.** Hold `Z` and the stage flies to a tight shot around your
+cursor, then back when you let go. It stays sharp rather than upscaling, because
+the capture ladder re-requests resolution by on-screen size — which is the one
+thing a normal screen share cannot do.
+
 **Following your view, if you want it.** Turn on **Drag the audience with my
 view** in Settings and the oldest behaviour returns: whatever you look at is
 what they see. It is off by default because with it on there is no private area
@@ -374,7 +385,7 @@ node scripts/make-brand-component.mjs  # logo SVG -> the React mark
 
 ```
 cargo test    70 passing   engine, feeds, protocol, sources, store, guests, tunnel
-vitest       204 passing   geometry, document, stage, auto-framing, resize, wire, render, frames, design
+vitest       235 passing   geometry, document, stage, auto-framing, redaction, pointer, resize, wire, render, frames, design
 ```
 
 Plus harnesses that exercise the real thing rather than a mock: `probe-frame`

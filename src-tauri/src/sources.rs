@@ -156,6 +156,16 @@ pub struct Focus {
     pub monitor: Option<String>,
 }
 
+/// Where the pointer is on the desk, in the same space monitors are reported in.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Cursor {
+    pub x: i32,
+    pub y: i32,
+    /// True while the primary button is held.
+    pub down: bool,
+}
+
 /// One row in the cockpit's source rail.
 #[derive(Debug, Clone, Serialize)]
 pub struct SourceInfo {
@@ -371,6 +381,24 @@ mod platform {
         best.map(|(_, id)| id)
     }
 
+    /// Where the pointer is, and whether a button is down.
+    ///
+    /// Polled with the frames rather than hooked. A global mouse hook would see
+    /// every movement on the machine and cost more than it is worth; the shot
+    /// only needs to know where the cursor is a few times a second.
+    pub fn cursor_state() -> Option<super::Cursor> {
+        use windows::Win32::Foundation::POINT;
+        use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+        use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+
+        let mut point = POINT::default();
+        unsafe { GetCursorPos(&mut point) }.ok()?;
+        // The high bit is "down right now", as opposed to "was pressed since
+        // the last call", which would double-count.
+        let down = unsafe { GetAsyncKeyState(VK_LBUTTON.0 as i32) } as u16 & 0x8000 != 0;
+        Some(super::Cursor { x: point.x, y: point.y, down })
+    }
+
     /// Desktop-space bounding box of every monitor, used to place region overlays.
     pub fn virtual_desktop_bounds() -> (i32, i32, i32, i32) {
         let monitors = list_monitors();
@@ -408,14 +436,17 @@ mod platform {
     pub fn foreground_focus() -> Option<super::Focus> {
         None
     }
+    pub fn cursor_state() -> Option<super::Cursor> {
+        None
+    }
     pub fn virtual_desktop_bounds() -> (i32, i32, i32, i32) {
         (0, 0, 1920, 1080)
     }
 }
 
 pub use platform::{
-    foreground_focus, foreground_window_id, list_monitors, list_windows, virtual_desktop_bounds,
-    window_is_alive,
+    cursor_state, foreground_focus, foreground_window_id, list_monitors, list_windows,
+    virtual_desktop_bounds, window_is_alive,
 };
 
 /// Everything the cockpit's source rail needs, in one call.

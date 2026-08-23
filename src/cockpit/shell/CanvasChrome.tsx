@@ -17,6 +17,7 @@ import {
   ForwardIcon,
   HelpIcon,
   HomeIcon,
+  PointerIcon,
   RemoveIcon,
   ScreenIcon,
   StageIcon,
@@ -138,6 +139,8 @@ export function SceneRail() {
 
       <AutoFrameChip />
 
+      <PointerChip />
+
       {spotlight && (
         <button className="scene-chip is-active" onClick={() => store.setSpotlight(null)}>
           Leave spotlight
@@ -248,6 +251,32 @@ function AutoFrameChip() {
         />
       )}
     </span>
+  );
+}
+
+/**
+ * Whether the audience can see where you are pointing.
+ *
+ * Zoomed out to four monitors, a real cursor is about two pixels in the output.
+ * "It's right there" is the most repeated sentence on any screen share, and it
+ * is the app's fault.
+ */
+function PointerChip() {
+  const on = useStore((s) => s.spotlightCursor);
+  const store = useActions();
+  return (
+    <button
+      className={cx("scene-chip", on && "is-active")}
+      onClick={() => store.setSpotlightCursor(!on)}
+      title={
+        on
+          ? "They can see a ring where your pointer is. Hold Z to punch in on it."
+          : "Show the audience where you are pointing — and hold Z to punch in"
+      }
+    >
+      <PointerIcon size={13} aria-hidden />
+      {on ? "Pointer shown" : "Show my pointer"}
+    </button>
   );
 }
 

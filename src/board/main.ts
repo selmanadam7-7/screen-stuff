@@ -13,6 +13,7 @@
 import "../styles/board.css";
 import { FrameClient } from "../core/frames";
 import { MediaPool } from "../core/media";
+import { ClickRipples, rippleProgress } from "../core/pointer";
 import { renderBoard } from "../core/render";
 import { emptyBoard, expireStrokes } from "../core/doc";
 import { onCommand, onSnapshot, runningInTauri, sendBoardStatus } from "../core/bus";
@@ -25,6 +26,7 @@ const DEFAULT_OUTPUT = { width: 1920, height: 1080 };
 interface BoardState {
   doc: BoardDoc;
   frame: Rect;
+  pointer: { x: number; y: number; down: boolean } | null;
   revision: number;
   dirty: boolean;
   connected: boolean;
@@ -36,6 +38,7 @@ interface BoardState {
 const state: BoardState = {
   doc: emptyBoard(),
   frame: { ...emptyBoard().frame },
+  pointer: null,
   revision: 0,
   dirty: true,
   connected: false,
@@ -108,6 +111,7 @@ async function boot() {
 function applySnapshot(snapshot: Snapshot) {
   state.doc = snapshot.doc;
   state.frame = snapshot.frame;
+  state.pointer = snapshot.pointer ?? null;
   if (snapshot.revision !== state.revision) {
     state.revision = snapshot.revision;
   }
@@ -131,6 +135,8 @@ function resizeOutput(snapshot: Snapshot) {
     canvas.height = height;
   }
 }
+
+const ripples = new ClickRipples();
 
 const currentScale = () => canvas.width / Math.max(1, state.frame.w);
 
@@ -160,7 +166,8 @@ function tick(now: number) {
     (t) => (t.kind === "camera" || t.kind === "video") && !t.hidden,
   );
   const hasTemporaryInk = state.doc.strokes.some((s) => s.fadeAfterMs);
-  if (!state.dirty && !hasLiveElementMedia && !hasTemporaryInk) return;
+  const hasPointer = state.pointer !== null || ripples.live(now).length > 0;
+  if (!state.dirty && !hasLiveElementMedia && !hasTemporaryInk && !hasPointer) return;
   state.dirty = false;
   lastDrawAt = now;
 
@@ -168,6 +175,10 @@ function tick(now: number) {
     const trimmed = expireStrokes(state.doc, now);
     if (trimmed !== state.doc) state.doc = trimmed;
   }
+
+  // The cockpit sends the pointer in board space already; here it only has to
+  // be turned into a ring and whatever ripples are still alive.
+  ripples.sample(state.pointer, state.pointer?.down ?? false, now);
 
   renderBoard({
     ctx: ctx!,
@@ -177,6 +188,16 @@ function tick(now: number) {
     doc: state.doc,
     media: pool ?? { resolve: () => null },
     now,
+    pointer: state.pointer
+      ? {
+          at: { x: state.pointer.x, y: state.pointer.y },
+          ripples: ripples.live(now).map((r) => ({
+            x: r.x,
+            y: r.y,
+            progress: rippleProgress(r, now),
+          })),
+        }
+      : null,
   });
 
   state.framesDrawn += 1;

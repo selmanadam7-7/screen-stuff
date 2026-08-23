@@ -97,6 +97,8 @@ export type Icon = ComponentType<IconProps>;
 export const StageIcon = AspectRatioSquare as Icon;
 /** The stage following the operator's work, rather than staying put. */
 export const FollowIcon = Crosshairs as Icon;
+/** Where the operator is pointing, shown to the audience. */
+export const PointerIcon = Cursor as Icon;
 export const ScreenIcon = Monitor as Icon;
 export const DisplayIcon = Display as Icon;
 export const WindowIcon = Frame as Icon;

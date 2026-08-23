@@ -19,6 +19,8 @@ export interface Snapshot {
   doc: BoardDoc;
   /** The rectangle the audience sees. Animated by the cockpit. */
   frame: Rect;
+  /** Where the operator is pointing, for the spotlight. Null when it is off. */
+  pointer?: { x: number; y: number; down: boolean } | null;
   /** Bumped whenever the cockpit wants the board to hard-refresh its media. */
   revision: number;
   clean: boolean;

@@ -132,6 +132,12 @@ export interface CockpitState {
   autoFrameOn: string | null;
   /** True while the operator is drawing a never-shared rectangle. */
   redacting: boolean;
+  /** Show the audience a ring where the pointer is. */
+  spotlightCursor: boolean;
+  /** Where the pointer is, in board space, or null when it is off the board. */
+  pointerAt: { x: number; y: number; down: boolean } | null;
+  /** The shot the stage will return to when the punch-in is let go. */
+  punchedFrom: Rect | null;
   /** Space-to-pan latched on from the toolbar rather than held down. */
   panMode: boolean;
   /** The transient line at the bottom of the cockpit. */
@@ -206,6 +212,12 @@ export interface Actions {
   setInk(patch: Partial<InkSettings>): void;
   /** Arm the tool that draws a never-shared rectangle on a tile. */
   setRedacting(on: boolean): void;
+  setSpotlightCursor(on: boolean): void;
+  setPointerAt(at: { x: number; y: number; down: boolean } | null): void;
+  /** Fly the stage to a tight shot around the cursor, and remember where it was. */
+  punchIn(rect: Rect): void;
+  /** Put the stage back where it was before the punch-in. */
+  punchOut(): void;
   addRedaction(tileId: string, rect: Rect, style?: "solid" | "blur"): void;
   removeRedaction(tileId: string, id: string): void;
   clearRedactions(tileId: string): void;
@@ -294,6 +306,9 @@ export const useStore = create<Store>((set, get) => ({
   autoFrame: "off",
   autoFrameOn: null,
   redacting: false,
+  spotlightCursor: false,
+  pointerAt: null,
+  punchedFrom: null,
   panMode: false,
   notice: null,
 
@@ -776,6 +791,37 @@ export const useStore = create<Store>((set, get) => ({
     set({ ink: { ...get().ink, ...patch } });
   },
 
+  setSpotlightCursor(on) {
+    set({ spotlightCursor: on, pointerAt: on ? get().pointerAt : null });
+    get().toast(on ? "they can see where you point" : "the pointer ring is off");
+    void api.settingsGet().then((settings) =>
+      api.settingsSet({ ...(settings as object), spotlightCursor: on }),
+    );
+    get().pushSnapshot();
+  },
+
+  setPointerAt(at) {
+    // Nothing else changes, and this runs several times a second, so it must
+    // not go through mutate and it must not push history.
+    set({ pointerAt: at });
+    get().pushSnapshot();
+  },
+
+  punchIn(rect) {
+    const state = get();
+    if (state.punchedFrom) return; // already in
+    set({ punchedFrom: { ...state.doc.frame } });
+    get().setStage(rect, { force: true, history: false });
+  },
+
+  punchOut() {
+    const state = get();
+    if (!state.punchedFrom) return;
+    const back = state.punchedFrom;
+    set({ punchedFrom: null });
+    get().setStage(back, { force: true, history: false });
+  },
+
   setRedacting(on) {
     set({ redacting: on, panMode: false });
     if (on) {
@@ -991,6 +1037,7 @@ export const useStore = create<Store>((set, get) => ({
     void sendSnapshot({
       doc: state.doc,
       frame: state.frame,
+      pointer: state.spotlightCursor ? state.pointerAt : null,
       revision: state.revision,
       clean: true,
     });

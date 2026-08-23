@@ -4,6 +4,8 @@ import { listenFor, onBoardStatus } from "../core/bus";
 import { FrameClient } from "../core/frames";
 import type { MediaPool } from "../core/media";
 import { AutoFramer, targetFor, type AutoFrameMode } from "../core/autoframe";
+import { cursorOnBoard, punchRect } from "../core/pointer";
+import { isTyping } from "./Editor";
 import type { Stroke } from "../core/types";
 import { TooltipHost, cx } from "../ui/primitives";
 import { CameraFeeds } from "./cameraFeeds";
@@ -51,6 +53,8 @@ function Cockpit() {
   const guestsRunning = useStore((s) => s.guests.running);
   const boardVisible = useStore((s) => s.boardVisible);
   const autoFrame = useStore((s) => s.autoFrame);
+  const spotlightCursor = useStore((s) => s.spotlightCursor);
+  const [punchKeyHeld, setPunchKeyHeld] = useState(false);
   const store = useActions();
   const shellRef = useRef<HTMLDivElement>(null);
   const cameraFeeds = useMemo(() => new CameraFeeds(), []);
@@ -66,10 +70,16 @@ function Cockpit() {
 
   useEffect(() => {
     void api
-      .settingsGet<{ look?: Look; followView?: boolean; autoFrame?: AutoFrameMode }>()
+      .settingsGet<{
+        look?: Look;
+        followView?: boolean;
+        autoFrame?: AutoFrameMode;
+        spotlightCursor?: boolean;
+      }>()
       .then((settings) => {
         if (settings?.look) store.setLook(settings.look);
         if (settings?.followView === true) store.setFollowView(true);
+        if (settings?.spotlightCursor === true) store.setSpotlightCursor(true);
         if (settings?.autoFrame && settings.autoFrame !== "off") {
           store.setAutoFrame(settings.autoFrame);
         }
@@ -138,6 +148,56 @@ function Cockpit() {
       useStore.setState({ autoFrameOn: null });
     };
   }, [autoFrame]);
+
+  /* --- where the pointer is, for the ring and the punch-in --------------- */
+  useEffect(() => {
+    if (!spotlightCursor && !punchKeyHeld) {
+      useStore.getState().setPointerAt(null);
+      return;
+    }
+    let stopped = false;
+    const tick = async () => {
+      if (stopped) return;
+      const cursor = await api.cursorState();
+      if (stopped) return;
+      const state = useStore.getState();
+      const at = cursorOnBoard(state.doc, cursor, state.monitors);
+      state.setPointerAt(at && cursor ? { x: at.x, y: at.y, down: cursor.down } : null);
+      if (punchKeyHeld && cursor) {
+        const shot = punchRect(state.doc, cursor, state.monitors);
+        if (shot && !state.punchedFrom) state.punchIn(shot);
+        else if (shot && state.punchedFrom) state.setStage(shot, { force: true, history: false });
+      }
+    };
+    // Fast enough that the ring keeps up with the hand, slow enough to be free.
+    const timer = window.setInterval(() => void tick(), punchKeyHeld ? 60 : 120);
+    void tick();
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [spotlightCursor, punchKeyHeld]);
+
+  /* --- hold Z to punch in on the cursor ---------------------------------- */
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "z" || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTyping(e.target)) return;
+      e.preventDefault();
+      setPunchKeyHeld(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "z") return;
+      setPunchKeyHeld(false);
+      useStore.getState().punchOut();
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
 
   /* --- keyboard, sources, boards, and what the other windows report ------ */
   useEffect(() => {

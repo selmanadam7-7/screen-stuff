@@ -110,6 +110,12 @@ fn foreground_focus() -> Option<sources::Focus> {
     sources::foreground_focus()
 }
 
+/// Where the pointer is, for the cursor spotlight and the punch-in.
+#[tauri::command]
+fn cursor_state() -> Option<sources::Cursor> {
+    sources::cursor_state()
+}
+
 #[tauri::command]
 fn source_is_alive(state: tauri::State<'_, AppState>, id: String) -> bool {
     match sources::SourceId::parse(&id) {
@@ -793,6 +799,7 @@ pub fn run() {
             list_monitors,
             foreground_window,
             foreground_focus,
+            cursor_state,
             source_is_alive,
             board_list,
             board_save,

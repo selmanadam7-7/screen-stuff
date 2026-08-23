@@ -8,6 +8,7 @@
 import type { BoardMeta, SessionInfo, SourceInfo } from "./types";
 import { runningInTauri } from "./bus";
 import type { Focus } from "./autoframe";
+import type { Cursor } from "./pointer";
 
 async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
@@ -330,6 +331,16 @@ export async function mediaAdopt(path: string): Promise<string> {
   } catch {
     // Still shows in this window; just not saved with the board.
     return convertFileSrc(path);
+  }
+}
+
+/** Where the pointer is, for the spotlight and the punch-in. */
+export async function cursorState(): Promise<Cursor | null> {
+  if (!runningInTauri()) return null;
+  try {
+    return await invoke<Cursor | null>("cursor_state");
+  } catch {
+    return null;
   }
 }
 

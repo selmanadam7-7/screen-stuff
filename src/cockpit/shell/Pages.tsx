@@ -499,6 +499,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ["Ctrl+→", "forward again"],
   ["1 – 9", "jump to that scene"],
   ["Enter", "move the stage to your view"],
+  ["Z (hold)", "punch in on your cursor"],
   ["G", "go private / come back"],
   ["F", "grab the window in front"],
   ["S", "add screens"],

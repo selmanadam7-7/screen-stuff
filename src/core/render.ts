@@ -74,6 +74,16 @@ export interface RenderInput {
   media: MediaResolver;
   now: number;
   chrome?: ChromeOptions;
+  /**
+   * Where the operator is pointing, drawn for the audience.
+   *
+   * Absent in the cockpit on purpose: the operator can already see their own
+   * mouse, and a second one drawn under it is just noise.
+   */
+  pointer?: {
+    at: Vec2 | null;
+    ripples: Array<{ x: number; y: number; progress: number }>;
+  } | null;
   /** Resolved design tokens. Read from the document when not supplied. */
   theme?: Theme;
 }
@@ -123,6 +133,7 @@ export function renderBoard(input: RenderInput): void {
 
   drawStrokes(ctx, doc.strokes, input.now, scale);
 
+  if (input.pointer) drawPointer(ctx, input.pointer, scale, theme);
   if (chrome) drawChrome(ctx, doc, chrome, scale, theme);
 
   ctx.restore();
@@ -803,6 +814,50 @@ function drawRedactions(
     }
     ctx.restore();
   }
+}
+
+/**
+ * The cursor, for people who are not sitting at this desk.
+ *
+ * A ring rather than an arrow: an arrow drawn on top of the captured arrow
+ * gives you two cursors a few pixels apart, which reads as a rendering bug. A
+ * ring around the real one says "here" without claiming to be the pointer.
+ */
+function drawPointer(
+  ctx: CanvasRenderingContext2D,
+  pointer: NonNullable<RenderInput["pointer"]>,
+  scale: number,
+  theme: Theme,
+) {
+  const px = 1 / scale;
+
+  for (const ripple of pointer.ripples) {
+    const radius = (10 + ripple.progress * 46) * px;
+    ctx.save();
+    ctx.globalAlpha = (1 - ripple.progress) * 0.55;
+    ctx.strokeStyle = theme.accent;
+    ctx.lineWidth = 3 * px * (1 - ripple.progress * 0.6);
+    ctx.beginPath();
+    ctx.arc(ripple.x, ripple.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (!pointer.at) return;
+  ctx.save();
+  // A soft halo first, so the ring reads on a light desktop and a dark one.
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = theme.accent;
+  ctx.beginPath();
+  ctx.arc(pointer.at.x, pointer.at.y, 17 * px, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 0.9;
+  ctx.strokeStyle = theme.accent;
+  ctx.lineWidth = 2.5 * px;
+  ctx.beginPath();
+  ctx.arc(pointer.at.x, pointer.at.y, 13 * px, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 export const HANDLE_SIZE = 9;
