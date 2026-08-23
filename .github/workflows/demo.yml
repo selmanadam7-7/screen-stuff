@@ -49,8 +49,17 @@ jobs:
         with:
           path: dist
 
+  # Only once the repository is public.
+  #
+  # Pages on a private repository needs a paid plan, and this one is private
+  # until launch, so deploying would fail on every single push. A workflow that
+  # is always red is a workflow nobody reads, and the build above is the part
+  # worth watching anyway -- it type-checks, tests and builds the demo whether
+  # or not anywhere is ready to serve it. This starts working by itself on the
+  # day the repository goes public.
   deploy:
     needs: build
+    if: github.event.repository.private == false
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -58,3 +67,16 @@ jobs:
     steps:
       - id: deploy
         uses: actions/deploy-pages@v4
+
+  # Says why, rather than leaving a skipped job to be interpreted.
+  not-yet:
+    needs: build
+    if: github.event.repository.private == true
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "The demo built. It is not published because this repository is"
+          echo "still private, and GitHub Pages on a private repository needs a"
+          echo "paid plan. Make the repository public, enable Pages under"
+          echo "Settings -> Pages (source: GitHub Actions), and the next push"
+          echo "deploys it."
