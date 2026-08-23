@@ -7,6 +7,7 @@
 
 import type { BoardMeta, SessionInfo, SourceInfo } from "./types";
 import { runningInTauri } from "./bus";
+import type { Focus } from "./autoframe";
 
 async function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   const { invoke: tauriInvoke } = await import("@tauri-apps/api/core");
@@ -329,6 +330,16 @@ export async function mediaAdopt(path: string): Promise<string> {
   } catch {
     // Still shows in this window; just not saved with the board.
     return convertFileSrc(path);
+  }
+}
+
+/** What the operator is working in right now, for auto-framing. */
+export async function foregroundFocus(): Promise<Focus | null> {
+  if (!runningInTauri()) return null;
+  try {
+    return await invoke<Focus | null>("foreground_focus");
+  } catch {
+    return null;
   }
 }
 

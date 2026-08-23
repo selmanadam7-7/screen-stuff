@@ -13,14 +13,16 @@ import {
   AddIcon,
   BackIcon,
   ExpandIcon,
+  FollowIcon,
   ForwardIcon,
   HelpIcon,
   HomeIcon,
   RemoveIcon,
   ScreenIcon,
   StageIcon,
+  WindowIcon,
 } from "../../ui/icons";
-import { Button, IconButton, cx, useTooltip } from "../../ui/primitives";
+import { Button, IconButton, Menu, cx, useTooltip } from "../../ui/primitives";
 import { useActions, useStore } from "../store";
 
 /* ==========================================================================
@@ -134,6 +136,8 @@ export function SceneRail() {
 
       <span className="scene-rail__rule" />
 
+      <AutoFrameChip />
+
       {spotlight && (
         <button className="scene-chip is-active" onClick={() => store.setSpotlight(null)}>
           Leave spotlight
@@ -184,6 +188,65 @@ function SceneChip({ id, name, hotkey }: { id: string; name: string; hotkey: str
       >
         ×
       </button>
+    </span>
+  );
+}
+
+/**
+ * Whether the shot follows the work.
+ *
+ * On the rail rather than buried in settings because it is a decision you make
+ * during a call, not before one — and because the moment it does something
+ * surprising you want the off switch in the same place you were already
+ * looking.
+ */
+function AutoFrameChip() {
+  const mode = useStore((s) => s.autoFrame);
+  const holding = useStore((s) => s.autoFrameOn);
+  const store = useActions();
+  const [open, setOpen] = useState<{ x: number; y: number } | null>(null);
+
+  const label =
+    mode === "off" ? "Follow my work" : mode === "monitor" ? "Following screens" : "Following windows";
+
+  return (
+    <span className="scene-chip-wrap">
+      <button
+        className={cx("scene-chip", mode !== "off" && "is-active")}
+        title={
+          mode === "off"
+            ? "Point the stage at whatever you are working in"
+            : `${label}${holding ? ` — on ${holding}` : ""}. Click to change.`
+        }
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setOpen(open ? null : { x: r.left, y: r.top - 8 });
+        }}
+      >
+        <FollowIcon size={13} aria-hidden />
+        {label}
+      </button>
+      {open && (
+        <Menu
+          x={open.x}
+          y={open.y}
+          onClose={() => setOpen(null)}
+          entries={[
+            {
+              label: "Follow the screen I work on",
+              icon: ScreenIcon,
+              onSelect: () => store.setAutoFrame("monitor"),
+            },
+            {
+              label: "Follow the window I work in",
+              icon: WindowIcon,
+              onSelect: () => store.setAutoFrame("window"),
+            },
+            { separator: true },
+            { label: "Leave the stage alone", onSelect: () => store.setAutoFrame("off") },
+          ]}
+        />
+      )}
     </span>
   );
 }

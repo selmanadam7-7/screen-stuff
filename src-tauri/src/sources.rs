@@ -138,6 +138,24 @@ pub enum ParseError {
     BadFeedName,
 }
 
+/// What the operator is working in right now.
+///
+/// Desktop coordinates, the same space `SourceInfo` reports monitors in, so the
+/// two can be compared without a conversion step that could disagree.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Focus {
+    /// `window:<hwnd>`, so it can be matched against a source tile directly.
+    pub window: String,
+    pub title: String,
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    /// `monitor:<n>` holding most of the window, when there is one.
+    pub monitor: Option<String>,
+}
+
 /// One row in the cockpit's source rail.
 #[derive(Debug, Clone, Serialize)]
 pub struct SourceInfo {
@@ -284,6 +302,75 @@ mod platform {
         Some(format!("window:{}", w.as_raw_hwnd() as isize))
     }
 
+    /// The window the operator is working in, and where it sits on the desk.
+    ///
+    /// Auto-framing needs more than "which window": it needs the rectangle, so
+    /// the shot can find that window inside a monitor tile even when the window
+    /// itself was never added to the board.
+    pub fn foreground_focus() -> Option<super::Focus> {
+        let w = Window::foreground().ok()?;
+        if w.process_id().ok()? == std::process::id() {
+            // Our own cockpit is not "work" — following it would point the shot
+            // at the control surface every time the operator touched it.
+            return None;
+        }
+        let hwnd = w.as_raw_hwnd() as isize;
+        let rect = window_rect(hwnd)?;
+        let monitor = monitor_containing(rect.0, rect.1, rect.2, rect.3);
+        Some(super::Focus {
+            window: format!("window:{hwnd}"),
+            title: w.title().unwrap_or_default(),
+            x: rect.0,
+            y: rect.1,
+            width: rect.2.max(1) as u32,
+            height: rect.3.max(1) as u32,
+            monitor,
+        })
+    }
+
+    fn window_rect(hwnd: isize) -> Option<(i32, i32, i32, i32)> {
+        use windows::Win32::Foundation::RECT;
+        use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS};
+        let handle = hwnd_from_isize(hwnd);
+        let mut rect = RECT::default();
+        // The extended frame bounds, not GetWindowRect: the latter includes the
+        // invisible resize border, which on Windows 10 is several pixels of
+        // nothing and would put the shot slightly off every window it framed.
+        let ok = unsafe {
+            DwmGetWindowAttribute(
+                handle,
+                DWMWA_EXTENDED_FRAME_BOUNDS,
+                &mut rect as *mut RECT as *mut std::ffi::c_void,
+                std::mem::size_of::<RECT>() as u32,
+            )
+        };
+        if ok.is_err() {
+            return None;
+        }
+        let (w, h) = (rect.right - rect.left, rect.bottom - rect.top);
+        if w <= 0 || h <= 0 {
+            return None;
+        }
+        Some((rect.left, rect.top, w, h))
+    }
+
+    /// The monitor holding most of a rectangle.
+    fn monitor_containing(x: i32, y: i32, w: i32, h: i32) -> Option<String> {
+        let mut best: Option<(i64, String)> = None;
+        for m in list_monitors() {
+            let ox = (x + w).min(m.x + m.width as i32) - x.max(m.x);
+            let oy = (y + h).min(m.y + m.height as i32) - y.max(m.y);
+            if ox <= 0 || oy <= 0 {
+                continue;
+            }
+            let area = ox as i64 * oy as i64;
+            if best.as_ref().is_none_or(|(a, _)| area > *a) {
+                best = Some((area, m.id.clone()));
+            }
+        }
+        best.map(|(_, id)| id)
+    }
+
     /// Desktop-space bounding box of every monitor, used to place region overlays.
     pub fn virtual_desktop_bounds() -> (i32, i32, i32, i32) {
         let monitors = list_monitors();
@@ -318,13 +405,17 @@ mod platform {
     pub fn foreground_window_id() -> Option<String> {
         None
     }
+    pub fn foreground_focus() -> Option<super::Focus> {
+        None
+    }
     pub fn virtual_desktop_bounds() -> (i32, i32, i32, i32) {
         (0, 0, 1920, 1080)
     }
 }
 
 pub use platform::{
-    foreground_window_id, list_monitors, list_windows, virtual_desktop_bounds, window_is_alive,
+    foreground_focus, foreground_window_id, list_monitors, list_windows, virtual_desktop_bounds,
+    window_is_alive,
 };
 
 /// Everything the cockpit's source rail needs, in one call.

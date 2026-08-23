@@ -178,9 +178,18 @@ work, because those are deliberate.
 you have made, and the zoom pill has both as buttons. A hint appears when you
 have wandered off, saying so and offering the way back.
 
-**Following, if you want it.** Turn on **Drag the audience with my view** in
-Settings and the old behaviour returns: whatever you look at is what they see.
-It is off by default because with it on there is no private area at all.
+**Following your work.** **Follow my work** on the scene rail points the stage at
+whatever you are actually doing — the screen you are working on, or the window
+you are working in. It settles before it commits, so alt-tabbing through five
+windows is one move rather than five, and it ignores changes too small to be a
+different shot. Two properties make it safe to leave on: it can only frame
+something already on the board, so it can never reveal what you did not put
+there; and touching the stage hands control straight back.
+
+**Following your view, if you want it.** Turn on **Drag the audience with my
+view** in Settings and the oldest behaviour returns: whatever you look at is
+what they see. It is off by default because with it on there is no private area
+at all.
 
 **Going private.** **Go private** freezes the audience on the last shot while you
 rearrange, then **Bring them here** moves the stage to where you now are.
@@ -365,7 +374,7 @@ node scripts/make-brand-component.mjs  # logo SVG -> the React mark
 
 ```
 cargo test    70 passing   engine, feeds, protocol, sources, store, guests, tunnel
-vitest       177 passing   geometry, document, stage, resize, wire, render, frames, design
+vitest       204 passing   geometry, document, stage, auto-framing, resize, wire, render, frames, design
 ```
 
 Plus harnesses that exercise the real thing rather than a mock: `probe-frame`

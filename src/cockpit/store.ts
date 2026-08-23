@@ -20,6 +20,7 @@ import {
   tileRect,
   zoomAround,
 } from "../core/geometry";
+import type { AutoFrameMode, AutoFrameTarget } from "../core/autoframe";
 import {
   ViewHistory,
   fitView,
@@ -119,6 +120,15 @@ export interface CockpitState {
   panel: Panel;
   /** Which of the five looks is on. Persisted with the app settings. */
   look: Look;
+  /**
+   * Whether the stage follows the operator's work, and how.
+   *
+   * A preference, kept with the app settings rather than the board: it
+   * describes how this person runs a call, not what is on this board.
+   */
+  autoFrame: AutoFrameMode;
+  /** What auto-framing is currently holding the shot on, for the readout. */
+  autoFrameOn: string | null;
   /** Space-to-pan latched on from the toolbar rather than held down. */
   panMode: boolean;
   /** The transient line at the bottom of the cockpit. */
@@ -207,6 +217,9 @@ export interface Actions {
   setPanel(panel: Panel): void;
   setLook(look: Look): void;
   setPanMode(on: boolean): void;
+  setAutoFrame(mode: AutoFrameMode): void;
+  /** Move the stage because the operator's work moved. Never records history. */
+  applyAutoFrame(target: AutoFrameTarget): void;
 
   startGuests(): Promise<void>;
   stopGuests(): Promise<void>;
@@ -270,6 +283,8 @@ export const useStore = create<Store>((set, get) => ({
   compact: false,
   panel: "board",
   look: "pure-white",
+  autoFrame: "off",
+  autoFrameOn: null,
   panMode: false,
   notice: null,
 
@@ -616,6 +631,9 @@ export const useStore = create<Store>((set, get) => ({
 
   selectStage(on) {
     set({ stageSelected: on, selection: on ? [] : get().selection });
+    // Reaching for the stage is how you say "I have got this". Auto-framing
+    // steps aside rather than pulling the shot back a second later.
+    if (on && get().autoFrame !== "off") get().setAutoFrame("off");
   },
 
   /**
@@ -891,6 +909,29 @@ export const useStore = create<Store>((set, get) => ({
   setPanMode(on) {
     set({ panMode: on });
     if (on) set({ ink: { ...get().ink, tool: null } });
+  },
+
+  setAutoFrame(mode) {
+    set({ autoFrame: mode, autoFrameOn: null });
+    get().toast(
+      mode === "off"
+        ? "the stage stays where you put it"
+        : mode === "monitor"
+          ? "the stage will follow the screen you work on"
+          : "the stage will follow the window you work in",
+    );
+    void api.settingsGet().then((settings) =>
+      api.settingsSet({ ...(settings as object), autoFrame: mode }),
+    );
+  },
+
+  applyAutoFrame(target) {
+    const state = get();
+    // Never fight the operator: if they are holding the stage, or looking at a
+    // spotlight, or have gone private, the shot is theirs.
+    if (state.stageSelected || state.spotlight || state.isPrivate) return;
+    set({ autoFrameOn: target.label });
+    get().setStage(target.rect, { history: false, force: true });
   },
 
   setCompact(compact) {

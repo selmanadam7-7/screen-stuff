@@ -3,6 +3,7 @@ import * as api from "../core/api";
 import { listenFor, onBoardStatus } from "../core/bus";
 import { FrameClient } from "../core/frames";
 import type { MediaPool } from "../core/media";
+import { AutoFramer, targetFor, type AutoFrameMode } from "../core/autoframe";
 import type { Stroke } from "../core/types";
 import { TooltipHost, cx } from "../ui/primitives";
 import { CameraFeeds } from "./cameraFeeds";
@@ -49,6 +50,7 @@ function Cockpit() {
   const doc = useStore((s) => s.doc);
   const guestsRunning = useStore((s) => s.guests.running);
   const boardVisible = useStore((s) => s.boardVisible);
+  const autoFrame = useStore((s) => s.autoFrame);
   const store = useActions();
   const shellRef = useRef<HTMLDivElement>(null);
   const cameraFeeds = useMemo(() => new CameraFeeds(), []);
@@ -63,10 +65,15 @@ function Cockpit() {
   }, [look]);
 
   useEffect(() => {
-    void api.settingsGet<{ look?: Look; followView?: boolean }>().then((settings) => {
-      if (settings?.look) store.setLook(settings.look);
-      if (settings?.followView === true) store.setFollowView(true);
-    });
+    void api
+      .settingsGet<{ look?: Look; followView?: boolean; autoFrame?: AutoFrameMode }>()
+      .then((settings) => {
+        if (settings?.look) store.setLook(settings.look);
+        if (settings?.followView === true) store.setFollowView(true);
+        if (settings?.autoFrame && settings.autoFrame !== "off") {
+          store.setAutoFrame(settings.autoFrame);
+        }
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -103,6 +110,34 @@ function Cockpit() {
     // hardware. The publisher is idle when nothing is watching.
     cameraFeeds.sync(doc, guestsRunning || boardVisible);
   }, [doc, guestsRunning, boardVisible, cameraFeeds]);
+
+  /* --- the stage follows the work, when asked to ------------------------- */
+  useEffect(() => {
+    if (autoFrame === "off") return;
+    const framer = new AutoFramer();
+    let stopped = false;
+
+    // Polled a few times a second rather than hooked. A focus hook in this
+    // process would fire for every window on the machine; this needs one
+    // answer, often enough to feel immediate and rarely enough to be free.
+    const tick = async () => {
+      if (stopped) return;
+      const focus = await api.foregroundFocus();
+      if (stopped) return;
+      const state = useStore.getState();
+      const target = targetFor(state.doc, focus, state.autoFrame, state.monitors);
+      const move = framer.offer(target, state.doc.frame, performance.now());
+      if (move) state.applyAutoFrame(move);
+    };
+
+    const timer = window.setInterval(() => void tick(), 300);
+    void tick();
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+      useStore.setState({ autoFrameOn: null });
+    };
+  }, [autoFrame]);
 
   /* --- keyboard, sources, boards, and what the other windows report ------ */
   useEffect(() => {

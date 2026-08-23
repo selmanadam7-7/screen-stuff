@@ -11,6 +11,7 @@
 import {
   Add,
   AspectRatioSquare,
+  Crosshairs,
   Display,
   AlertCircle,
   Archive,
@@ -93,6 +94,8 @@ export type Icon = ComponentType<IconProps>;
 /* --- what things are ------------------------------------------------------ */
 /** The stage: the rectangle the audience sees. Never the same glyph as a window. */
 export const StageIcon = AspectRatioSquare as Icon;
+/** The stage following the operator's work, rather than staying put. */
+export const FollowIcon = Crosshairs as Icon;
 export const ScreenIcon = Monitor as Icon;
 export const DisplayIcon = Display as Icon;
 export const WindowIcon = Frame as Icon;

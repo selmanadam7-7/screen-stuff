@@ -100,6 +100,16 @@ fn foreground_window() -> Option<String> {
     sources::foreground_window_id()
 }
 
+/// What the operator is working in, for auto-framing.
+///
+/// Polled rather than pushed: Windows will happily tell you about focus
+/// changes through a hook, but a hook in this process would fire on every
+/// window on the machine and we want one number a few times a second.
+#[tauri::command]
+fn foreground_focus() -> Option<sources::Focus> {
+    sources::foreground_focus()
+}
+
 #[tauri::command]
 fn source_is_alive(state: tauri::State<'_, AppState>, id: String) -> bool {
     match sources::SourceId::parse(&id) {
@@ -782,6 +792,7 @@ pub fn run() {
             list_sources,
             list_monitors,
             foreground_window,
+            foreground_focus,
             source_is_alive,
             board_list,
             board_save,

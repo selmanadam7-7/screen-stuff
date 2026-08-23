@@ -550,6 +550,7 @@ function NoteGroup({ tile }: { tile: NoteTile }) {
 function StageInspector() {
   const doc = useStore((s) => s.doc);
   const followView = useStore((s) => s.followView);
+  const autoFrame = useStore((s) => s.autoFrame);
   const isPrivate = useStore((s) => s.isPrivate);
   const store = useActions();
   const stage = doc.frame;
@@ -647,6 +648,23 @@ function StageInspector() {
           checked={doc.stageLocked}
           onChange={(on) => store.setStageLocked(on)}
         />
+        <Field label="Follow my work">
+          <Segmented
+            size="sm"
+            value={autoFrame}
+            onChange={(mode) => store.setAutoFrame(mode as typeof autoFrame)}
+            options={[
+              { value: "off", label: "Off" },
+              { value: "monitor", label: "Screens" },
+              { value: "window", label: "Windows" },
+            ]}
+          />
+        </Field>
+        <p className="inspector__note">
+          The stage points itself at whatever you are working in. It can only
+          ever frame something already on the board, and touching the stage
+          hands control straight back.
+        </p>
       </Group>
     </>
   );
