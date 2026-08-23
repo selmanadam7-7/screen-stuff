@@ -67,6 +67,12 @@ capture your actual screens, which is what the download is for.
 Windows 10 1809 or newer, 64-bit.
 
 ```powershell
+winget install ScreenStuff
+```
+
+Or from a clone, which builds it if there is no release to fetch:
+
+```powershell
 powershell -ExecutionPolicy Bypass -File scripts\install.ps1
 ```
 
@@ -79,8 +85,10 @@ Or hand this repository to your coding agent and ask it to install Screen Stuff
 -- [`AGENTS.md`](AGENTS.md) tells it everything it needs, including the failure
 modes worth knowing about.
 
-Builds are unsigned, so a downloaded copy trips SmartScreen once: **More info**
-then **Run anyway**.
+Releases are signed once a certificate is in place, and
+[`packaging/winget`](packaging/winget) documents the one-time setup for both.
+Until then a downloaded copy trips SmartScreen once: **More info**, then **Run
+anyway**.
 
 ## Running it
 

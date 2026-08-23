@@ -1,0 +1,35 @@
+# Keeps `winget install ScreenStuff` pointing at the newest release.
+#
+# The whole reason this exists: "download an exe, click through a warning" is a
+# cliff, and one command is not. It runs after a release is published, so the
+# installer and the checksum it references already exist.
+name: winget
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to submit, e.g. 0.1.0
+        required: true
+
+jobs:
+  submit:
+    runs-on: windows-latest
+    steps:
+      # wingetcreate builds the manifest from the release asset, validates it,
+      # and opens the pull request against microsoft/winget-pkgs. Hand-writing
+      # the YAML is how it ends up subtly wrong and rejected a day later.
+      - name: Submit to winget
+        run: |
+          $version = "${{ github.event.inputs.version }}"
+          if (-not $version) { $version = "${{ github.event.release.tag_name }}".TrimStart("v") }
+          $url = "https://github.com/${{ github.repository }}/releases/download/v$version/Screen.Stuff_${version}_x64-setup.exe"
+          Write-Host "submitting $version from $url"
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe update ScreenStuff.ScreenStuff `
+            --version $version `
+            --urls $url `
+            --submit `
+            --token "${{ secrets.WINGET_TOKEN }}"

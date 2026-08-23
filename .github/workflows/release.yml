@@ -46,14 +46,48 @@ jobs:
       - run: pnpm tauri build
 
       - uses: actions/upload-artifact@v4
+        id: upload
         with:
           name: screen-stuff-installer
           path: src-tauri/target/release/bundle/nsis/*-setup.exe
 
+      # Signing turns "Windows protected your PC" into nothing at all, which is
+      # the difference between a download people finish and one they abandon.
+      # SignPath gives open-source projects a free certificate; until the two
+      # secrets exist this step is skipped and the build still produces an
+      # installer, so a fork with no certificate is not broken by it.
+      - name: Sign the installer
+        id: sign
+        if: ${{ env.SIGNPATH_API_TOKEN != '' }}
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: screen-stuff
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.upload.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: src-tauri/target/release/bundle/nsis
+
+      # winget wants a SHA256, and so does anyone who cares what they ran.
+      - name: Checksum
+        id: sha
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash
+          "sha256=$hash" >> $env:GITHUB_OUTPUT
+          "$hash  $($exe.Name)" | Out-File -Encoding utf8 "$($exe.DirectoryName)/SHA256SUMS.txt"
+          Write-Host "$hash  $($exe.Name)"
+
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: src-tauri/target/release/bundle/nsis/*-setup.exe
+          files: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/bundle/nsis/SHA256SUMS.txt
           generate_release_notes: true
           body: |
             Windows 10 1809 or newer, 64-bit.
@@ -64,3 +98,7 @@ jobs:
 
             Or hand your coding agent this repository and ask it to install
             Screen Stuff. See [AGENTS.md](AGENTS.md).
+
+            ```
+            winget install ScreenStuff
+            ```
