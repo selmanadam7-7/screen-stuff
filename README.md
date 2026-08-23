@@ -271,6 +271,22 @@ moment you turn it off. Nothing is recorded, stored or sent; the audio never
 leaves the Web Audio graph. The size itself is runtime state and never touches
 the document, because the undo stack is not a transcript.
 
+## Going back
+
+"Wait, go back to that" happens on every call, and the usual answer is twenty
+seconds of finding your way to a window you have since closed. **Remember the
+last 45 seconds** in Settings keeps the shot in a ring, and a scrubber appears
+over the canvas when there is something to go back to. Scrubbing shows the
+remembered frame to the audience too — the point is "let me show you that
+again", so a private rewind would be the wrong feature.
+
+**It is not a recording, and the difference is the design.** It lives in memory
+and never touches the disk. It is a fixed-length ring, so the oldest second
+falls off the end continuously and there is never a growing pile of your screen
+anywhere. It ends when the app does: nothing to find later, nothing to leak, no
+file to forget about. About 15 MB, and the ceiling does not move however fast
+the machine feeds it.
+
 ## Audio, honestly
 
 A webcam is a video-only device. When an app asks Windows for "the camera" it
@@ -448,7 +464,7 @@ node scripts/make-brand-component.mjs  # logo SVG -> the React mark
 
 ```
 cargo test    70 passing   engine, feeds, protocol, sources, store, guests, tunnel
-vitest       235 passing   geometry, document, stage, auto-framing, redaction, pointer, resize, wire, render, frames, design
+vitest       310 passing   geometry, document, stage, auto-framing, redaction, pointer, overlays, layouts, voice, replay, resize, wire, render, frames, design
 ```
 
 Plus harnesses that exercise the real thing rather than a mock: `probe-frame`

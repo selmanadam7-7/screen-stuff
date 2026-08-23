@@ -356,6 +356,7 @@ export function SettingsPage() {
   const doc = useStore((s) => s.doc);
   const look = useStore((s) => s.look);
   const followView = useStore((s) => s.followView);
+  const replayOn = useStore((s) => s.replayOn);
   const store = useActions();
   const [info, setInfo] = useState<{ version: string; dataDir: string } | null>(null);
 
@@ -419,6 +420,21 @@ export function SettingsPage() {
               Move it to my view
             </Button>
           </div>
+        </Group>
+
+        <Group title="Going back">
+          <p className="settings__note">
+            Keeps the last 45 seconds of the shot so you can show something
+            again. In memory only — nothing is written to disk, the oldest
+            second falls off the end continuously, and it ends when the app
+            does. That is a different thing from recording a session.
+          </p>
+          <Switch
+            label="Remember the last 45 seconds"
+            hint="About 15 MB of memory. Never leaves this machine."
+            checked={replayOn}
+            onChange={(on) => store.setReplayOn(on)}
+          />
         </Group>
 
         <Group title="Capture defaults">

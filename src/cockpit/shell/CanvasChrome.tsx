@@ -10,6 +10,8 @@ import { contentBounds } from "../../core/doc";
 import { boundingRect, fitAspect } from "../../core/geometry";
 import { LAYOUTS, layoutsFor } from "../../core/layouts";
 import { CARD_PRESETS } from "../../core/overlays";
+import { agoLabel } from "../../core/replay";
+import type { ReplayCapture } from "../replayCapture";
 import { homeView } from "../../core/stage";
 import {
   AddIcon,
@@ -17,6 +19,7 @@ import {
   CardIcon,
   LayoutIcon,
   PreviewIcon,
+  ReplayIcon,
   ExpandIcon,
   FollowIcon,
   ForwardIcon,
@@ -386,6 +389,71 @@ function PreviewChips() {
   );
 }
 
+
+/**
+ * Going back to what was on the shot a moment ago.
+ *
+ * Appears only once there is something to go back to. Scrubbing shows the
+ * remembered frame to the audience as well — the whole point is "let me show
+ * you that again", so a private rewind would be the wrong feature.
+ */
+export function ReplayBar({ capture }: { capture: ReplayCapture }) {
+  const on = useStore((s) => s.replayOn);
+  const frame = useStore((s) => s.replayFrame);
+  const index = useStore((s) => s.replayIndex);
+  const store = useActions();
+  const [count, setCount] = useState(0);
+
+  // The buffer is not React state — it changes four times a second and nothing
+  // should re-render for that. Polled for its length, which is all the UI needs.
+  useEffect(() => {
+    if (!on) return;
+    const timer = window.setInterval(() => setCount(capture.buffer.length), 500);
+    return () => window.clearInterval(timer);
+  }, [on, capture]);
+
+  if (!on || count < 2) return null;
+
+  const show = (i: number) => {
+    const clamped = Math.max(0, Math.min(capture.buffer.length - 1, i));
+    const at = capture.buffer.at(clamped);
+    store.showReplayFrame(at?.image ?? null, clamped, capture.buffer.length);
+  };
+
+  if (!frame) {
+    return (
+      <div className="replay">
+        <button className="scene-chip" onClick={() => show(capture.buffer.length - 1)}>
+          <ReplayIcon size={13} aria-hidden />
+          Go back {Math.round(capture.buffer.seconds(Date.now()))}s
+        </button>
+      </div>
+    );
+  }
+
+  const current = capture.buffer.at(index);
+  return (
+    <div className="replay is-open">
+      <IconButton icon={BackIcon} label="Back a frame" onClick={() => show(index - 1)} />
+      <input
+        className="replay__scrub"
+        type="range"
+        min={0}
+        max={Math.max(0, capture.buffer.length - 1)}
+        value={index}
+        onChange={(e) => show(Number(e.target.value))}
+        aria-label="Scrub the replay"
+      />
+      <IconButton icon={ForwardIcon} label="Forward a frame" onClick={() => show(index + 1)} />
+      <span className="replay__at numeric">
+        {current ? agoLabel(current, Date.now()) : ""}
+      </span>
+      <Button size="sm" tone="primary" onClick={() => store.showReplayFrame(null, 0, 0)}>
+        Back to live
+      </Button>
+    </div>
+  );
+}
 
 /* ==========================================================================
    Minimap

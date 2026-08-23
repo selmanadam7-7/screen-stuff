@@ -7,6 +7,7 @@ import { AutoFramer, targetFor, type AutoFrameMode } from "../core/autoframe";
 import { cursorOnBoard, punchRect } from "../core/pointer";
 import { SpeechGate, approach } from "../core/voice";
 import { MicLevel } from "./mic";
+import { ReplayCapture } from "./replayCapture";
 import { isTyping } from "./Editor";
 import type { Stroke } from "../core/types";
 import { TooltipHost, cx } from "../ui/primitives";
@@ -15,7 +16,14 @@ import { Editor } from "./Editor";
 import { addByExtension } from "./Panels";
 import { RegionPicker, REGION_PICKED_EVENT } from "./RegionPicker";
 import { AddScreens } from "./shell/AddScreens";
-import { Minimap, OffStageHint, OnAirPill, SceneRail, ZoomControl } from "./shell/CanvasChrome";
+import {
+  Minimap,
+  OffStageHint,
+  OnAirPill,
+  ReplayBar,
+  SceneRail,
+  ZoomControl,
+} from "./shell/CanvasChrome";
 import { Inspector } from "./shell/Inspector";
 import { BoardsPage, MediaPage, SettingsPage } from "./shell/Pages";
 import { ShareBoard } from "./shell/ShareBoard";
@@ -57,12 +65,18 @@ function Cockpit() {
   const autoFrame = useStore((s) => s.autoFrame);
   const spotlightCursor = useStore((s) => s.spotlightCursor);
   const autoCamera = useStore((s) => s.autoCamera);
+  const replayOn = useStore((s) => s.replayOn);
+  const replay = useMemo(() => new ReplayCapture(), []);
+  const poolRef = useRef<MediaPool | null>(null);
   const [punchKeyHeld, setPunchKeyHeld] = useState(false);
   const store = useActions();
   const shellRef = useRef<HTMLDivElement>(null);
   const cameraFeeds = useMemo(() => new CameraFeeds(), []);
   const handlePool = useCallback(
-    (pool: MediaPool | null) => cameraFeeds.setPool(pool),
+    (pool: MediaPool | null) => {
+      cameraFeeds.setPool(pool);
+      poolRef.current = pool;
+    },
     [cameraFeeds],
   );
 
@@ -79,12 +93,14 @@ function Cockpit() {
         autoFrame?: AutoFrameMode;
         spotlightCursor?: boolean;
         autoCamera?: boolean;
+        replayOn?: boolean;
       }>()
       .then((settings) => {
         if (settings?.look) store.setLook(settings.look);
         if (settings?.followView === true) store.setFollowView(true);
         if (settings?.spotlightCursor === true) store.setSpotlightCursor(true);
         if (settings?.autoCamera === true) store.setAutoCamera(true);
+        if (settings?.replayOn === true) store.setReplayOn(true);
         if (settings?.autoFrame && settings.autoFrame !== "off") {
           store.setAutoFrame(settings.autoFrame);
         }
@@ -235,6 +251,22 @@ function Cockpit() {
       useStore.getState().setCameraEmphasis(0);
     };
   }, [autoCamera]);
+
+  /* --- the last minute of the shot, kept in memory ----------------------- */
+  useEffect(() => {
+    if (!replayOn) {
+      replay.discard();
+      return;
+    }
+    replay.start(() => ({
+      doc: useStore.getState().doc,
+      // A null resolver draws the board without its live pixels, which is what
+      // the shot genuinely looked like before the engine connected. Refusing to
+      // capture at all would leave a hole in the history for no good reason.
+      media: poolRef.current ?? { resolve: () => null },
+    }));
+    return () => replay.stop();
+  }, [replayOn, replay]);
 
   /* --- keyboard, sources, boards, and what the other windows report ------ */
   useEffect(() => {
@@ -414,6 +446,7 @@ function Cockpit() {
                   <Minimap />
                 </div>
                 <div className="canvas-dock__mid">
+                  <ReplayBar capture={replay} />
                   <SceneRail />
                 </div>
                 <div className="canvas-dock__side canvas-dock__side--end">

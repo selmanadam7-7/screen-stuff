@@ -28,6 +28,7 @@ interface BoardState {
   frame: Rect;
   pointer: { x: number; y: number; down: boolean } | null;
   cameraEmphasis: number;
+  replay: HTMLImageElement | null;
   revision: number;
   dirty: boolean;
   connected: boolean;
@@ -41,6 +42,7 @@ const state: BoardState = {
   frame: { ...emptyBoard().frame },
   pointer: null,
   cameraEmphasis: 0,
+  replay: null,
   revision: 0,
   dirty: true,
   connected: false,
@@ -115,6 +117,7 @@ function applySnapshot(snapshot: Snapshot) {
   state.frame = snapshot.frame;
   state.pointer = snapshot.pointer ?? null;
   state.cameraEmphasis = snapshot.cameraEmphasis ?? 0;
+  applyReplay(snapshot.replayFrame ?? null);
   if (snapshot.revision !== state.revision) {
     state.revision = snapshot.revision;
   }
@@ -140,6 +143,28 @@ function resizeOutput(snapshot: Snapshot) {
 }
 
 const ripples = new ClickRipples();
+
+/**
+ * Decode a replayed frame, reusing one image element.
+ *
+ * A new Image per frame at playback speed would leave the decoder with a queue
+ * of throwaway work; one element that keeps being pointed at a new source lets
+ * the browser drop the old decode as soon as it is replaced.
+ */
+let replaySrc: string | null = null;
+function applyReplay(dataUrl: string | null) {
+  if (dataUrl === replaySrc) return;
+  replaySrc = dataUrl;
+  if (!dataUrl) {
+    state.replay = null;
+    markDirty();
+    return;
+  }
+  const image = state.replay ?? new Image();
+  image.onload = () => markDirty();
+  image.src = dataUrl;
+  state.replay = image;
+}
 
 const currentScale = () => canvas.width / Math.max(1, state.frame.w);
 
@@ -170,7 +195,9 @@ function tick(now: number) {
   );
   const hasTemporaryInk = state.doc.strokes.some((s) => s.fadeAfterMs);
   const hasPointer = state.pointer !== null || ripples.live(now).length > 0;
-  if (!state.dirty && !hasLiveElementMedia && !hasTemporaryInk && !hasPointer) return;
+  const replaying = state.replay !== null;
+  if (!state.dirty && !hasLiveElementMedia && !hasTemporaryInk && !hasPointer && !replaying)
+    return;
   state.dirty = false;
   lastDrawAt = now;
 
@@ -192,6 +219,7 @@ function tick(now: number) {
     media: pool ?? { resolve: () => null },
     now,
     cameraEmphasis: state.cameraEmphasis,
+    replay: state.replay,
     pointer: state.pointer
       ? {
           at: { x: state.pointer.x, y: state.pointer.y },

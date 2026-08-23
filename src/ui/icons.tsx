@@ -105,6 +105,8 @@ export const CardIcon = Presentation as Icon;
 export const PreviewIcon = Layers as Icon;
 /** Arranging tiles into a composed shot. */
 export const LayoutIcon = Grid as Icon;
+/** Going back to what was on the shot a moment ago. */
+export const ReplayIcon = Undo as Icon;
 export const ScreenIcon = Monitor as Icon;
 export const DisplayIcon = Display as Icon;
 export const WindowIcon = Frame as Icon;

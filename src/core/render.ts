@@ -98,6 +98,13 @@ export interface RenderInput {
    * stack and the autosave with somebody's sentences.
    */
   cameraEmphasis?: number;
+  /**
+   * A remembered frame, drawn over the stage instead of the live board.
+   *
+   * An image rather than a re-render: the whole point is to show what was
+   * there, and the windows it was showing may since have closed.
+   */
+  replay?: CanvasImageSource | null;
 }
 
 /** Everything the chrome needs, derived from the tokens for the current look. */
@@ -146,6 +153,20 @@ export function renderBoard(input: RenderInput): void {
   }
 
   drawStrokes(ctx, doc.strokes, input.now, scale);
+
+  if (input.replay) {
+    // Over everything live, under the operator's own chrome. Nothing from the
+    // present should show through a frame from the past.
+    const stage = doc.frame;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(stage.x, stage.y, stage.w, stage.h);
+    ctx.clip();
+    ctx.fillStyle = theme.dark ? "#08090d" : "#101822";
+    ctx.fillRect(stage.x, stage.y, stage.w, stage.h);
+    ctx.drawImage(input.replay, stage.x, stage.y, stage.w, stage.h);
+    ctx.restore();
+  }
 
   if (input.pointer) drawPointer(ctx, input.pointer, scale, theme);
   // On the stage, over everything, under only the operator's own chrome.

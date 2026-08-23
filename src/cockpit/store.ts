@@ -151,6 +151,13 @@ export interface CockpitState {
   cameraEmphasis: number;
   /** Set when the microphone could not be opened, so the UI can say so. */
   micError: string | null;
+  /** Remember the last minute of the shot, in memory only. */
+  replayOn: boolean;
+  /** The frame being shown instead of the live board, or null when live. */
+  replayFrame: string | null;
+  /** Which frame of the buffer is up, and how many there are. */
+  replayIndex: number;
+  replayCount: number;
   /** Where the pointer is, in board space, or null when it is off the board. */
   pointerAt: { x: number; y: number; down: boolean } | null;
   /** The shot the stage will return to when the punch-in is let go. */
@@ -241,6 +248,9 @@ export interface Actions {
   setAutoCamera(on: boolean): void;
   setCameraEmphasis(value: number): void;
   setMicError(message: string | null): void;
+  setReplayOn(on: boolean): void;
+  /** Show a remembered frame on the stage. Null goes back to live. */
+  showReplayFrame(frame: string | null, index: number, count: number): void;
   setPointerAt(at: { x: number; y: number; down: boolean } | null): void;
   /** Fly the stage to a tight shot around the cursor, and remember where it was. */
   punchIn(rect: Rect): void;
@@ -344,6 +354,10 @@ export const useStore = create<Store>((set, get) => ({
   autoCamera: false,
   cameraEmphasis: 0,
   micError: null,
+  replayOn: false,
+  replayFrame: null,
+  replayIndex: 0,
+  replayCount: 0,
   pointerAt: null,
   punchedFrom: null,
   panMode: false,
@@ -898,6 +912,23 @@ export const useStore = create<Store>((set, get) => ({
     get().pushSnapshot();
   },
 
+  setReplayOn(on) {
+    set({ replayOn: on });
+    if (!on) set({ replayFrame: null, replayIndex: 0, replayCount: 0 });
+    get().toast(
+      on ? "keeping the last 45 seconds, in memory" : "not remembering anything",
+    );
+    void api.settingsGet().then((settings) =>
+      api.settingsSet({ ...(settings as object), replayOn: on }),
+    );
+    get().pushSnapshot();
+  },
+
+  showReplayFrame(frame, index, count) {
+    set({ replayFrame: frame, replayIndex: index, replayCount: count });
+    get().pushSnapshot();
+  },
+
   setMicError(message) {
     set({ micError: message });
     if (message) get().toast(`could not listen: ${message}`, "warn");
@@ -1167,6 +1198,7 @@ export const useStore = create<Store>((set, get) => ({
       frame: state.frame,
       pointer: state.spotlightCursor ? state.pointerAt : null,
       cameraEmphasis: state.cameraEmphasis,
+      replayFrame: state.replayFrame,
       revision: state.revision,
       clean: true,
     });
