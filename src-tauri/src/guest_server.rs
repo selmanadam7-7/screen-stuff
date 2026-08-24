@@ -310,6 +310,26 @@ async fn handle_guest_message(
     sink: &mut futures_util::stream::SplitSink<WebSocket, Message>,
 ) -> Result<(), ()> {
     match message {
+        FromGuest::Edit { op } => {
+            if !hub.powers().control {
+                return refuse(sink, "the host has not handed out control").await;
+            }
+            if !op.is_sane() {
+                return refuse(sink, "that does not describe a place on the board").await;
+            }
+            // A tile it names has to be one the host is actually showing. The
+            // published board is the same list that gates which sources a guest
+            // may open, so a guest can only move what they can already see.
+            if let Some(id) = op.tile_id() {
+                if !hub.tile_exists(id) {
+                    return refuse(sink, "that is not on the board any more").await;
+                }
+            }
+            let who = hub.name_of(guest_id);
+            hub.tell_host(ToHost::GuestEdit { id: guest_id, name: who, op });
+            Ok(())
+        }
+
         FromGuest::Share { kind } => {
             if !hub.powers().share {
                 return refuse(sink, "the host has not opened this up for sharing").await;

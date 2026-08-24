@@ -1015,6 +1015,12 @@ function GuestsTab() {
             checked={powers.share}
             onChange={(share) => store.setGuestPowers({ share })}
           />
+          <Switch
+            label="Move things and move the shot"
+            hint="Makes them a co-host: they can drag tiles around and change what everyone is looking at."
+            checked={powers.control}
+            onChange={(control) => store.setGuestPowers({ control })}
+          />
         </Group>
       )}
 

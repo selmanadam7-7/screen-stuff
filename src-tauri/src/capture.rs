@@ -543,10 +543,17 @@ fn start_session(root: &SourceId, key: String) -> Result<Arc<Session>> {
         }
         SourceId::Window { hwnd } => {
             let window = Window::from_raw_hwnd(*hwnd as *mut std::ffi::c_void);
-            if !window.is_valid() {
-                return Err(anyhow!("that window has closed"));
-            }
-            let rect = window.rect().map_err(|e| anyhow!("window rect: {e:?}"))?;
+            // Deliberately not `is_valid()`. That answers "is this a window a
+            // screen-capture tool should offer in a picker", and two of the
+            // things it rules out are exactly what a web tile is: a window
+            // belonging to *this* process, and one with WS_EX_TOOLWINDOW, which
+            // is what `skip_taskbar(true)` sets. Web tiles could therefore never
+            // be captured, and reported "that window has closed" about a window
+            // sitting right there.
+            //
+            // The question actually being asked is whether the window still
+            // exists, and being able to read its rectangle answers that.
+            let rect = window.rect().map_err(|_| anyhow!("that window has closed"))?;
             native_w = (rect.right - rect.left).max(0) as u32;
             native_h = (rect.bottom - rect.top).max(0) as u32;
             let settings = Settings::new(

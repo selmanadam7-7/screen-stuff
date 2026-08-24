@@ -48,11 +48,18 @@ pub struct Powers {
     /// is a decision rather than a default.
     #[serde(default)]
     pub share: bool,
+    /// Whether guests may move things and decide what everyone is looking at.
+    ///
+    /// The co-host switch. Everything above changes what a guest can add or
+    /// see; this lets them rearrange the board and move the stage, which is
+    /// most of what the host can do.
+    #[serde(default)]
+    pub control: bool,
 }
 
 impl Default for Powers {
     fn default() -> Self {
-        Self { draw: true, roam: true, files: true, share: false }
+        Self { draw: true, roam: true, files: true, share: false, control: false }
     }
 }
 
@@ -85,6 +92,8 @@ pub enum ToHost {
     GuestView { id: u64, view: serde_json::Value },
     /// Where a guest is pointing, in board space.
     GuestPointer { id: u64, x: f64, y: f64 },
+    /// A guest moved something, or moved the shot.
+    GuestEdit { id: u64, name: String, op: EditOp },
     /// A guest started sharing. `source` is a feed id, ready to be a tile.
     GuestShare { id: u64, name: String, source: String, kind: ShareKind },
     /// ...and stopped, or left.
@@ -108,6 +117,8 @@ pub enum FromGuest {
     Subscribe { stream_id: u32, source: String, width: u32, height: u32, #[serde(default)] fps: u32, #[serde(default)] quality: u8 },
     Unsubscribe { stream_id: u32 },
     Ping { #[serde(default)] nonce: u64 },
+    /// Rearrange the board, or move the stage. Needs the control power.
+    Edit { op: EditOp },
     /// Start sharing a screen or a camera. The host decides the feed name.
     Share { kind: ShareKind },
     /// Stop one share. Leaving stops them all anyway.
@@ -138,6 +149,55 @@ pub struct RunningGuestServer {
     /// nothing else, for anything that takes a browser source.
     pub output_url: String,
     shutdown: tokio::sync::oneshot::Sender<()>,
+}
+
+/// One change a guest may ask the host to make.
+///
+/// Named operations rather than a document, deliberately. A guest that could
+/// send a board could send *any* board — every tile replaced, every redaction
+/// dropped, the stage moved onto something private. Each of these carries only
+/// what it needs, names a tile the host already has, and is applied by the host
+/// through the same code path its own tools use.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "op", rename_all = "camelCase")]
+pub enum EditOp {
+    /// Move a tile to a place on the board.
+    MoveTile { id: String, x: f64, y: f64 },
+    /// Move and resize one.
+    ResizeTile { id: String, x: f64, y: f64, w: f64, h: f64 },
+    /// Take one off the board.
+    RemoveTile { id: String },
+    /// Change what everyone is looking at.
+    SetStage { x: f64, y: f64, w: f64, h: f64 },
+}
+
+impl EditOp {
+    /// Whether every number in this is a number.
+    ///
+    /// JSON has no trouble carrying NaN through a `f64` field once it has been
+    /// through a language that produces one, and a NaN in a tile's position
+    /// puts it nowhere and makes it unselectable.
+    pub fn is_sane(&self) -> bool {
+        let finite = |values: &[f64]| values.iter().all(|v| v.is_finite());
+        match self {
+            Self::MoveTile { x, y, .. } => finite(&[*x, *y]),
+            Self::ResizeTile { x, y, w, h, .. } => {
+                finite(&[*x, *y, *w, *h]) && *w > 0.0 && *h > 0.0
+            }
+            Self::RemoveTile { .. } => true,
+            Self::SetStage { x, y, w, h } => finite(&[*x, *y, *w, *h]) && *w > 0.0 && *h > 0.0,
+        }
+    }
+
+    /// The tile this touches, if it names one.
+    pub fn tile_id(&self) -> Option<&str> {
+        match self {
+            Self::MoveTile { id, .. } | Self::ResizeTile { id, .. } | Self::RemoveTile { id } => {
+                Some(id)
+            }
+            Self::SetStage { .. } => None,
+        }
+    }
 }
 
 /// What a guest is sharing.
@@ -225,12 +285,29 @@ impl GuestHub {
             .unwrap_or(false)
     }
 
+    /// Whether the board the guests are looking at has a tile with this id.
+    ///
+    /// Read from the published document rather than a separate list, so a guest
+    /// can only touch what the host is actually showing them -- the same rule,
+    /// and the same source of truth, as which streams they may open.
+    pub fn tile_exists(&self, id: &str) -> bool {
+        self.published
+            .read()
+            .as_ref()
+            .and_then(|p| p.doc.get("tiles").and_then(|t| t.as_array()).cloned())
+            .map(|tiles| {
+                tiles.iter().any(|t| t.get("id").and_then(|v| v.as_str()) == Some(id))
+            })
+            .unwrap_or(false)
+    }
+
     pub fn powers(&self) -> Powers {
         self.published.read().as_ref().map(|p| p.powers).unwrap_or(Powers {
             draw: false,
             roam: false,
             files: false,
             share: false,
+            control: false,
         })
     }
 
@@ -525,6 +602,38 @@ mod tests {
     }
 
     #[test]
+    fn an_edit_has_to_describe_a_real_place() {
+        use EditOp::*;
+        // NaN survives a trip through JSON once something upstream produces it,
+        // and a tile at NaN is nowhere and cannot be picked up again.
+        assert!(!MoveTile { id: "t".into(), x: f64::NAN, y: 0.0 }.is_sane());
+        assert!(!SetStage { x: 0.0, y: 0.0, w: f64::INFINITY, h: 1.0 }.is_sane());
+        assert!(!ResizeTile { id: "t".into(), x: 0.0, y: 0.0, w: 0.0, h: 10.0 }.is_sane());
+        assert!(MoveTile { id: "t".into(), x: -400.0, y: 12.5 }.is_sane());
+        assert!(SetStage { x: 0.0, y: 0.0, w: 1920.0, h: 1080.0 }.is_sane());
+    }
+
+    #[test]
+    fn a_guest_may_only_touch_a_tile_the_host_is_showing() {
+        // The same rule that gates which streams they may open: the published
+        // board is the whole of what a guest can reach.
+        let hub = GuestHub::new(CaptureEngine::new());
+        assert!(!hub.tile_exists("t_1"), "nothing published, nothing to touch");
+        hub.publish(
+            serde_json::json!({ "tiles": [{ "id": "t_1", "source": "monitor:1" }] }),
+            serde_json::json!({}),
+            Powers::default(),
+        );
+        assert!(hub.tile_exists("t_1"));
+        assert!(!hub.tile_exists("t_somewhere_else"));
+    }
+
+    #[test]
+    fn control_is_off_until_the_host_hands_it_over() {
+        assert!(!Powers::default().control);
+    }
+
+    #[test]
     fn sharing_is_off_until_the_host_turns_it_on() {
         // Drawing and roaming change what a guest sees. This puts a live
         // picture from their machine onto yours, so it is not a default.
@@ -540,7 +649,7 @@ mod tests {
         hub.publish(
             doc_with(&[]),
             serde_json::json!({}),
-            Powers { draw: false, roam: true, files: false, share: true },
+            Powers { draw: false, roam: true, files: false, share: true, control: false },
         );
         let powers = hub.powers();
         assert!(!powers.draw);

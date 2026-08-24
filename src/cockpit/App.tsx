@@ -36,7 +36,7 @@ import { Sidebar } from "./shell/Sidebar";
 import { InkBar, Toolbar } from "./shell/Toolbar";
 import { TitleBar } from "./shell/TitleBar";
 import { installGlobalHotkeys, installLocalHotkeys } from "./hotkeys";
-import { useActions, useStore, type Look } from "./store";
+import { useActions, useStore, type GuestEdit, type Look } from "./store";
 
 type GuestEvent =
   | { t: "guest_joined"; guest: { id: number; name: string } }
@@ -47,7 +47,8 @@ type GuestEvent =
   | { t: "guest_reaction"; id: number; reaction: string }
   | { t: "guest_file"; id: number; name: string; mime: string; data_url: string }
   | { t: "guest_share"; id: number; name: string; source: string; kind: "screen" | "camera" }
-  | { t: "guest_share_ended"; id: number; source: string };
+  | { t: "guest_share_ended"; id: number; source: string }
+  | { t: "guest_edit"; id: number; name: string; op: GuestEdit };
 
 export function App() {
   const isRegionWindow = new URLSearchParams(window.location.search).get("window") === "region";
@@ -387,6 +388,9 @@ function Cockpit() {
           break;
         case "guest_share_ended":
           store.removeGuestShare(event.source);
+          break;
+        case "guest_edit":
+          store.applyGuestEdit(event.name, event.op);
           break;
       }
     }).then((un) => unlisteners.push(un));

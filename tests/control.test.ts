@@ -42,7 +42,7 @@ function fakeTarget(doc: BoardDoc = emptyBoard("Test board")) {
     autoFrame: "off",
     punchedFrom: null,
     guests: { running: false, link: null, publicLink: null, guests: [] },
-    guestPowers: { draw: true, roam: true, files: true, share: false },
+    guestPowers: { draw: true, roam: true, files: true, share: false, control: false },
 
     setStage(next, options) {
       calls.push(`setStage:${options?.transition ?? "fly"}`);

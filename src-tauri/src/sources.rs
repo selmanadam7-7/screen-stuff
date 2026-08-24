@@ -301,7 +301,10 @@ mod platform {
     }
 
     pub fn window_is_alive(hwnd: isize) -> bool {
-        Window::from_raw_hwnd(hwnd as *mut std::ffi::c_void).is_valid()
+        // Existence, not eligibility. `is_valid()` rejects windows owned by
+        // this process and tool windows, which is right for a picker and wrong
+        // here -- a web tile is both, and this is what marks a tile as gone.
+        Window::from_raw_hwnd(hwnd as *mut std::ffi::c_void).rect().is_ok()
     }
 
     pub fn foreground_window_id() -> Option<String> {

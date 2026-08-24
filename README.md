@@ -466,6 +466,22 @@ board, off the stage, and gets there only when you move the stage to it or drag
 it in. That is the same rule every other tile follows, and it is what makes this
 safe to leave switched on.
 
+### Making them a co-host
+
+**Moving things and the shot** goes further: a guest gets *Move things*, which
+drags tiles around the board for everyone, and *Show everyone this*, which moves
+the stage to whatever they are looking at. Between that, drawing, dropping files
+and sharing their own screen, an invited guest can do most of what the host can.
+
+They send named operations — move this tile, resize it, remove it, put the stage
+here — never a document. A guest that could send a board could send *any* board:
+every tile replaced, every redaction dropped, the stage moved onto something
+private. Each operation names a tile the host is already showing, is checked for
+being a real place on the board, and is applied through the same actions the
+host's own tools use. So a guest moving the stage animates, records history and
+respects a locked stage exactly as if the host had done it — and a locked stage
+still says no, because a guest is who that lock is for.
+
 The feed name is derived from the guest's id on the host's side and never taken
 from the message. A guest that could name its own feed could publish over the
 host's camera feed and replace the host's face on every screen in the call.

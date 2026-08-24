@@ -21,6 +21,7 @@ import {
   EyeIcon,
   ImageIcon,
   PenIcon,
+  LayoutIcon,
   ScreenIcon,
   ShieldIcon,
   WebIcon,
@@ -246,6 +247,13 @@ export function ShareBoard({ open, onClose }: { open: boolean; onClose: () => vo
                   see
                   change={powers.share}
                   onChange={(share) => store.setGuestPowers({ share })}
+                />
+                <PermRow
+                  icon={LayoutIcon}
+                  label="Moving things and the shot"
+                  see
+                  change={powers.control}
+                  onChange={(control) => store.setGuestPowers({ control })}
                 />
                 <PermRow
                   icon={EyeIcon}

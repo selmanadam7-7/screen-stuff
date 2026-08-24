@@ -244,6 +244,13 @@ export interface GuestPowers {
    * puts a live picture from their machine onto yours.
    */
   share: boolean;
+  /**
+   * Whether guests may move things and decide what everyone is looking at.
+   *
+   * The co-host switch: everything else changes what a guest can add or see,
+   * this lets them rearrange the board and move the stage.
+   */
+  control: boolean;
 }
 
 export interface GuestInfo {

@@ -24,7 +24,7 @@ import { MediaPool } from "../core/media";
 import { REACTIONS, REACTION_GLYPH } from "../core/presence";
 import { renderBoard } from "../core/render";
 import { emptyBoard, expireStrokes, newId, reviveBoard } from "../core/doc";
-import { clamp, fitAspect, screenToBoard, simplifyPoints, zoomAround } from "../core/geometry";
+import { clamp, fitAspect, screenToBoard, simplifyPoints, tileAt, zoomAround } from "../core/geometry";
 import type { BoardDoc, InkTool, Rect, Stroke, Vec2 } from "../core/types";
 import { GuestShares, WHY_NOT_SHARING, canShare, type ShareKind } from "./share";
 
@@ -34,6 +34,8 @@ interface Powers {
   files: boolean;
   /** Whether this guest may put their own screen or camera on the board. */
   share: boolean;
+  /** Whether this guest may move things and move the shot. */
+  control: boolean;
 }
 
 const INK_COLORS = ["#FF5A41", "#F5C062", "#56D9A3", "#8296FF", "#EAE6DC"];
@@ -51,13 +53,17 @@ const state = {
   doc: emptyBoard("Waiting for the host"),
   frame: { ...emptyBoard().frame } as Rect,
   view: null as Rect | null, // null means "following the host"
-  powers: { draw: false, roam: false, files: false, share: false } as Powers,
+  powers: { draw: false, roam: false, files: false, share: false, control: false } as Powers,
   name: "",
   id: 0,
   connected: false,
   closed: null as string | null,
   dirty: true,
   tool: null as InkTool | null,
+  /** True while the "Move things" tool is armed. */
+  moving: false,
+  /** The tile being dragged, and where it started. */
+  dragging: null as { id: string; grabX: number; grabY: number; x: number; y: number } | null,
   color: INK_COLORS[0],
   drawing: null as number[] | null,
 };
@@ -155,11 +161,15 @@ client.onControl = (message) => {
       // An output view is a feed, not a participant: whatever the host has
       // granted, it never draws and never roams.
       state.powers = OUTPUT
-        ? { draw: false, roam: false, files: false, share: false }
+        ? { draw: false, roam: false, files: false, share: false, control: false }
         : ((message.powers as Powers) ?? state.powers);
       // A host who withdraws sharing mid-call takes the picture back with it,
       // rather than leaving a guest broadcasting into a closed door.
       if (!state.powers.share) shares.stopAll();
+      if (!state.powers.control) {
+        state.moving = false;
+        state.dragging = null;
+      }
       renderToolbar();
       followButton.style.display = state.powers.roam ? "" : "none";
       if (!state.powers.roam) state.view = null;
@@ -225,6 +235,33 @@ function send(message: unknown) {
 function renderToolbar() {
   renderShareBar();
   toolbar.innerHTML = "";
+
+  // The co-host tools come first: they are the ones that change the call
+  // rather than the picture of it.
+  if (state.powers.control) {
+    const move = document.createElement("button");
+    move.className = `guest-btn${state.moving ? " is-active" : ""}`;
+    move.textContent = state.moving ? "Moving things" : "Move things";
+    move.title = "Drag a tile to move it. Everyone sees it.";
+    move.addEventListener("click", () => {
+      state.moving = !state.moving;
+      if (state.moving) state.tool = null;
+      renderToolbar();
+    });
+    toolbar.appendChild(move);
+
+    const show = document.createElement("button");
+    show.className = "guest-btn";
+    show.textContent = "Show everyone this";
+    show.title = "Move the shot to what you are looking at";
+    show.addEventListener("click", () => {
+      const view = currentView();
+      send({ t: "edit", op: { op: "setStage", x: view.x, y: view.y, w: view.w, h: view.h } });
+      flash("moved the shot for everyone");
+    });
+    toolbar.appendChild(show);
+  }
+
   if (!state.powers.draw) return;
 
   for (const color of INK_COLORS) {
@@ -356,6 +393,19 @@ for (const kind of REACTIONS) {
 
 canvas.addEventListener("pointerdown", (event) => {
   canvas.setPointerCapture(event.pointerId);
+
+  // Moving things comes before drawing and panning: while the tool is armed a
+  // drag on a tile is a move, and a drag on empty board is still a pan.
+  if (state.moving && state.powers.control && event.button === 0) {
+    const point = toBoard(event);
+    const tile = tileAt(state.doc.tiles, point);
+    if (tile && !tile.locked) {
+      state.dragging = { id: tile.id, grabX: point.x - tile.x, grabY: point.y - tile.y,
+                         x: tile.x, y: tile.y };
+      return;
+    }
+  }
+
   if (state.tool && state.powers.draw && event.button === 0 && !event.shiftKey) {
     const point = toBoard(event);
     state.drawing = [point.x, point.y];
@@ -378,8 +428,30 @@ function sendPointer(point: { x: number; y: number }) {
   send({ t: "pointer", x: point.x, y: point.y });
 }
 
+/**
+ * A tile being dragged, sent while it moves rather than only at the end.
+ *
+ * Everyone else sees it travel, which is the point: a tile that teleports when
+ * a guest lets go looks like a glitch, and the person dragging it gets no
+ * feedback that anything is happening until they stop.
+ */
+let lastMoveSent = 0;
+function sendMove(id: string, x: number, y: number, force = false) {
+  const now = performance.now();
+  if (!force && now - lastMoveSent < 50) return;
+  lastMoveSent = now;
+  send({ t: "edit", op: { op: "moveTile", id, x, y } });
+}
+
 canvas.addEventListener("pointermove", (event) => {
   sendPointer(toBoard(event));
+  if (state.dragging) {
+    const point = toBoard(event);
+    state.dragging.x = point.x - state.dragging.grabX;
+    state.dragging.y = point.y - state.dragging.grabY;
+    sendMove(state.dragging.id, state.dragging.x, state.dragging.y);
+    return;
+  }
   if (state.drawing) {
     const point = toBoard(event);
     state.drawing =
@@ -402,6 +474,13 @@ canvas.addEventListener("pointermove", (event) => {
 
 canvas.addEventListener("pointerup", () => {
   panFrom = null;
+  if (state.dragging) {
+    // The last one always goes, throttle or not, or the tile settles a frame
+    // short of where it was dropped.
+    sendMove(state.dragging.id, state.dragging.x, state.dragging.y, true);
+    state.dragging = null;
+    return;
+  }
   if (state.drawing && state.drawing.length >= 4) {
     const stroke: Stroke = {
       id: newId("guest"),

@@ -297,6 +297,8 @@ export interface Actions {
   setGuestPowers(patch: Partial<api.GuestPowers>): void;
   applyGuestInk(stroke: Stroke): void;
   applyGuestFile(name: string, mime: string, dataUrl: string): void;
+  /** A guest moved something, or moved the shot. */
+  applyGuestEdit(name: string, op: GuestEdit): void;
   /** A guest started sharing: put it on the board, off the stage. */
   applyGuestShare(name: string, source: string, kind: "screen" | "camera"): void;
   /** ...and stopped. Take the tile away rather than freezing their last frame. */
@@ -306,6 +308,13 @@ export interface Actions {
   toast(message: string, tone?: "info" | "warn"): void;
   pushSnapshot(): void;
 }
+
+/** One change a guest asked for. Mirrors `EditOp` on the Rust side. */
+export type GuestEdit =
+  | { op: "moveTile"; id: string; x: number; y: number }
+  | { op: "resizeTile"; id: string; x: number; y: number; w: number; h: number }
+  | { op: "removeTile"; id: string }
+  | { op: "setStage"; x: number; y: number; w: number; h: number };
 
 export type Store = CockpitState & Actions;
 
@@ -386,7 +395,7 @@ export const useStore = create<Store>((set, get) => ({
     tunnel: { state: "off", url: null, message: "" },
     guests: [],
   },
-  guestPowers: { draw: true, roam: true, files: true, share: false },
+  guestPowers: { draw: true, roam: true, files: true, share: false, control: false },
 
   // -------------------------------------------------------------------------
 
@@ -1324,6 +1333,39 @@ export const useStore = create<Store>((set, get) => ({
    * drags it in. That is the same rule every other tile follows, and it is the
    * reason letting guests share is safe to leave on.
    */
+  /**
+   * A guest rearranging the board, or moving the shot.
+   *
+   * Applied through the same actions the host's own tools use, so a guest
+   * moving the stage animates, records history and respects a locked stage
+   * exactly as if the host had done it. The server has already checked that the
+   * guest holds the power and that the tile is one on the published board; what
+   * is left here is the part only the cockpit knows.
+   */
+  applyGuestEdit(name, op) {
+    const state = get();
+    switch (op.op) {
+      case "moveTile":
+        get().patchTile(op.id, { x: op.x, y: op.y });
+        break;
+      case "resizeTile":
+        get().patchTile(op.id, { x: op.x, y: op.y, w: op.w, h: op.h });
+        break;
+      case "removeTile": {
+        const tile = state.doc.tiles.find((t) => t.id === op.id);
+        get().mutate((d) => doc.removeTiles(d, [op.id]));
+        get().toast(`${name} removed ${tile?.label || "a tile"}`);
+        break;
+      }
+      case "setStage":
+        // Not forced: a locked stage is the host saying "not mid-call", and a
+        // guest is exactly who that is protecting against.
+        get().setStage({ x: op.x, y: op.y, w: op.w, h: op.h });
+        get().toast(`${name} moved the shot`);
+        break;
+    }
+  },
+
   applyGuestShare(name, source, kind) {
     const state = get();
     if (state.doc.tiles.some((t) => "source" in t && t.source === source)) return;
@@ -1398,9 +1440,18 @@ let publishTimer: number | null = null;
  * send. And the document rides along only when it is a different object from
  * the one last sent, which for a moving stage or a talking head is never.
  */
-let snapshotFrame: number | null = null;
+let snapshotPending = false;
 let lastDocSent: BoardDoc | null = null;
 let lastFullSentAt = 0;
+
+/**
+ * The longest a snapshot waits when animation frames are not arriving.
+ *
+ * A hidden window's timers are throttled to about a second, so this is a floor
+ * rather than a rate: it exists so that a minimised cockpit still feeds the
+ * board window and the guests, slowly, instead of not at all.
+ */
+const HIDDEN_SNAPSHOT_MS = 60;
 
 /**
  * How long the board may go without being sent the whole document.
@@ -1419,9 +1470,20 @@ export function forceFullSnapshot() {
 }
 
 function scheduleSnapshot(get: () => Store) {
-  if (snapshotFrame !== null) return;
-  snapshotFrame = requestAnimationFrame(() => {
-    snapshotFrame = null;
+  if (snapshotPending) return;
+  snapshotPending = true;
+
+  // Both an animation frame and a timer, first one wins.
+  //
+  // rAF alone was a regression: a minimised or fully occluded window stops
+  // getting frames, so the board window and every guest would freeze the moment
+  // the operator put the cockpit behind something -- which is most of a call.
+  // A timer keeps running when the window is hidden (throttled, not stopped),
+  // so the worst case is a slower update rather than none. When the window is
+  // visible the animation frame always arrives first and the timer is a no-op.
+  const run = () => {
+    if (!snapshotPending) return;
+    snapshotPending = false;
     const state = get();
     const now = performance.now();
     const docChanged =
@@ -1438,7 +1500,9 @@ function scheduleSnapshot(get: () => Store) {
       clean: true,
     });
     if (state.guests.running) schedulePublish(get);
-  });
+  };
+  requestAnimationFrame(run);
+  window.setTimeout(run, HIDDEN_SNAPSHOT_MS);
 }
 
 function schedulePublish(get: () => Store) {

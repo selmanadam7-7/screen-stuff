@@ -95,8 +95,16 @@ export interface ControlTarget {
   startTunnel(): Promise<void>;
   stopTunnel(): Promise<void>;
   toast(message: string, tone?: "info" | "warn"): void;
-  guestPowers: { draw: boolean; roam: boolean; files: boolean; share: boolean };
-  setGuestPowers(patch: Partial<{ draw: boolean; roam: boolean; files: boolean; share: boolean }>): void;
+  guestPowers: { draw: boolean; roam: boolean; files: boolean; share: boolean; control: boolean };
+  setGuestPowers(
+    patch: Partial<{
+      draw: boolean;
+      roam: boolean;
+      files: boolean;
+      share: boolean;
+      control: boolean;
+    }>,
+  ): void;
   /** Draws the stage exactly as the audience sees it, as a PNG data URL. */
   shot(): Promise<string>;
 }
@@ -619,13 +627,13 @@ export const ACTIONS: Record<string, Action> = {
   powers: {
     summary: "Change what guests are allowed to do.",
     accepts: [
-      '{ "draw": true, "roam": true, "files": true, "share": false }',
+      '{ "draw": true, "roam": true, "files": true, "share": false, "control": false }',
       "any subset — anything left out stays as it is",
     ],
     example: { share: true },
     run(target, body) {
       const patch: Record<string, boolean> = {};
-      for (const key of ["draw", "roam", "files", "share"] as const) {
+      for (const key of ["draw", "roam", "files", "share", "control"] as const) {
         const value = flag(body, key);
         if (value !== null) patch[key] = value;
       }
