@@ -41,11 +41,18 @@ pub struct Powers {
     pub draw: bool,
     pub roam: bool,
     pub files: bool,
+    /// Whether guests may put their own screen or camera on the board.
+    ///
+    /// Defaults off, unlike the others. Drawing and roaming affect what a guest
+    /// sees; this puts a live picture from their machine onto yours, and that
+    /// is a decision rather than a default.
+    #[serde(default)]
+    pub share: bool,
 }
 
 impl Default for Powers {
     fn default() -> Self {
-        Self { draw: true, roam: true, files: true }
+        Self { draw: true, roam: true, files: true, share: false }
     }
 }
 
@@ -78,6 +85,10 @@ pub enum ToHost {
     GuestView { id: u64, view: serde_json::Value },
     /// Where a guest is pointing, in board space.
     GuestPointer { id: u64, x: f64, y: f64 },
+    /// A guest started sharing. `source` is a feed id, ready to be a tile.
+    GuestShare { id: u64, name: String, source: String, kind: ShareKind },
+    /// ...and stopped, or left.
+    GuestShareEnded { id: u64, source: String },
     /// A guest reacting. One of a small fixed set, never arbitrary text.
     GuestReaction { id: u64, reaction: String },
 }
@@ -97,6 +108,10 @@ pub enum FromGuest {
     Subscribe { stream_id: u32, source: String, width: u32, height: u32, #[serde(default)] fps: u32, #[serde(default)] quality: u8 },
     Unsubscribe { stream_id: u32 },
     Ping { #[serde(default)] nonce: u64 },
+    /// Start sharing a screen or a camera. The host decides the feed name.
+    Share { kind: ShareKind },
+    /// Stop one share. Leaving stops them all anyway.
+    StopShare { kind: ShareKind },
 }
 
 pub struct GuestHub {
@@ -123,6 +138,33 @@ pub struct RunningGuestServer {
     /// nothing else, for anything that takes a browser source.
     pub output_url: String,
     shutdown: tokio::sync::oneshot::Sender<()>,
+}
+
+/// What a guest is sharing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ShareKind {
+    Screen,
+    Camera,
+}
+
+impl ShareKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Screen => "screen",
+            Self::Camera => "camera",
+        }
+    }
+}
+
+/// The feed name a guest's share publishes under.
+///
+/// Derived from the guest's id on *this* side, never taken from the message.
+/// A guest that could name its own feed could publish to `cam-<host tile id>`
+/// and replace the host's face on every screen in the call. There is no
+/// legitimate reason for a guest to choose this string, so it never gets to.
+pub fn share_feed_name(guest_id: u64, kind: ShareKind) -> String {
+    format!("guest{guest_id}-{}", kind.label())
 }
 
 /// The largest file a guest may drop on the board, before base64 overhead.
@@ -188,6 +230,7 @@ impl GuestHub {
             draw: false,
             roam: false,
             files: false,
+            share: false,
         })
     }
 
@@ -221,6 +264,34 @@ impl GuestHub {
         self.guests.lock().insert(id, guest.clone());
         self.tell_host(ToHost::GuestJoined { guest: guest.clone() });
         guest
+    }
+
+    /// Give a guest the name they typed, keeping the id their socket knows.
+    ///
+    /// This used to be a `leave` followed by a `join`, which minted a *new* id
+    /// while the connection carried on using the old one. Two things followed
+    /// from that: the roster entry could no longer be found by the id anything
+    /// else had, so a guest's name was unavailable to the rest of the server;
+    /// and the `leave` on disconnect removed nothing, so everyone who ever set
+    /// a name stayed in the host's guest list forever.
+    pub fn rename(&self, id: u64, name: String) -> GuestInfo {
+        let name = sanitise_name(&name, id);
+        let info = {
+            let mut guests = self.guests.lock();
+            let entry =
+                guests.entry(id).or_insert_with(|| GuestInfo { id, name: name.clone(), view: None });
+            entry.name = name;
+            entry.clone()
+        };
+        // The host reloads the roster on this, so re-announcing is how a rename
+        // reaches the guest list without a message of its own.
+        self.tell_host(ToHost::GuestJoined { guest: info.clone() });
+        info
+    }
+
+    /// What this guest is called, for a label on the host's board.
+    pub fn name_of(&self, id: u64) -> String {
+        self.guests.lock().get(&id).map(|g| g.name.clone()).unwrap_or_else(|| "Guest".into())
     }
 
     pub fn leave(&self, id: u64) {
@@ -411,17 +482,71 @@ mod tests {
     }
 
     #[test]
+    fn naming_yourself_keeps_the_id_your_socket_is_using() {
+        // This used to leave and re-join, minting a new id while the connection
+        // carried on using the old one -- so the disconnect removed nothing and
+        // everyone who typed a name stayed in the guest list forever.
+        let hub = GuestHub::new(CaptureEngine::new());
+        let joined = hub.join(String::new());
+        let renamed = hub.rename(joined.id, "Ada".into());
+        assert_eq!(renamed.id, joined.id, "the id has to survive a rename");
+        assert_eq!(renamed.name, "Ada");
+        assert_eq!(hub.name_of(joined.id), "Ada");
+        assert_eq!(hub.roster().len(), 1, "renaming does not add a second guest");
+
+        hub.leave(joined.id);
+        assert!(hub.roster().is_empty(), "and leaving actually removes them");
+    }
+
+    #[test]
+    fn a_guest_can_never_name_the_feed_it_publishes_to() {
+        // The attack this closes: a guest that chose its own feed name could
+        // publish to the host's camera feed and replace the host's face on
+        // every screen in the call. The name is derived from the guest id on
+        // this side and the message carries nothing that reaches it.
+        let mine = share_feed_name(3, ShareKind::Screen);
+        assert_eq!(mine, "guest3-screen");
+        assert_ne!(mine, share_feed_name(4, ShareKind::Screen), "two guests never collide");
+        assert_ne!(
+            mine,
+            share_feed_name(3, ShareKind::Camera),
+            "one guest's two shares never collide"
+        );
+        // And it can never be a host camera feed, whose names start with cam-.
+        for id in [0u64, 1, 99, u64::MAX] {
+            for kind in [ShareKind::Screen, ShareKind::Camera] {
+                let name = share_feed_name(id, kind);
+                assert!(name.starts_with("guest"), "{name}");
+                assert!(!name.starts_with("cam-"), "{name}");
+                // And it always parses as a feed, so it can become a tile.
+                assert!(crate::sources::SourceId::parse(&format!("feed:{name}")).is_ok());
+            }
+        }
+    }
+
+    #[test]
+    fn sharing_is_off_until_the_host_turns_it_on() {
+        // Drawing and roaming change what a guest sees. This puts a live
+        // picture from their machine onto yours, so it is not a default.
+        assert!(!Powers::default().share);
+        let hub = GuestHub::new(CaptureEngine::new());
+        // And nothing published at all means nothing is permitted.
+        assert!(!hub.powers().share);
+    }
+
+    #[test]
     fn powers_come_from_the_publication() {
         let hub = GuestHub::new(CaptureEngine::new());
         hub.publish(
             doc_with(&[]),
             serde_json::json!({}),
-            Powers { draw: false, roam: true, files: false },
+            Powers { draw: false, roam: true, files: false, share: true },
         );
         let powers = hub.powers();
         assert!(!powers.draw);
         assert!(powers.roam);
         assert!(!powers.files);
+        assert!(powers.share);
     }
 
     #[test]

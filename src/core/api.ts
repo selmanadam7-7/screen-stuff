@@ -237,6 +237,13 @@ export interface GuestPowers {
   draw: boolean;
   roam: boolean;
   files: boolean;
+  /**
+   * Whether guests may put their own screen or camera on the board.
+   *
+   * Off by default, unlike the rest. The others change what a guest sees; this
+   * puts a live picture from their machine onto yours.
+   */
+  share: boolean;
 }
 
 export interface GuestInfo {

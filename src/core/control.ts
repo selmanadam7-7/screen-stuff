@@ -95,6 +95,8 @@ export interface ControlTarget {
   startTunnel(): Promise<void>;
   stopTunnel(): Promise<void>;
   toast(message: string, tone?: "info" | "warn"): void;
+  guestPowers: { draw: boolean; roam: boolean; files: boolean; share: boolean };
+  setGuestPowers(patch: Partial<{ draw: boolean; roam: boolean; files: boolean; share: boolean }>): void;
   /** Draws the stage exactly as the audience sees it, as a PNG data URL. */
   shot(): Promise<string>;
 }
@@ -144,6 +146,9 @@ export function liveTarget(
     },
     get guests() {
       return getState().guests;
+    },
+    get guestPowers() {
+      return getState().guestPowers;
     },
     shot,
   };
@@ -611,6 +616,25 @@ export const ACTIONS: Record<string, Action> = {
     },
   },
 
+  powers: {
+    summary: "Change what guests are allowed to do.",
+    accepts: [
+      '{ "draw": true, "roam": true, "files": true, "share": false }',
+      "any subset — anything left out stays as it is",
+    ],
+    example: { share: true },
+    run(target, body) {
+      const patch: Record<string, boolean> = {};
+      for (const key of ["draw", "roam", "files", "share"] as const) {
+        const value = flag(body, key);
+        if (value !== null) patch[key] = value;
+      }
+      if (!Object.keys(patch).length) return { powers: target.guestPowers };
+      target.setGuestPowers(patch);
+      return { powers: target.guestPowers };
+    },
+  },
+
   board: {
     summary: "Change how the board itself is set up.",
     accepts: ['{ "fps": 30 }', '{ "quality": 80 }', '{ "background": "#0b0d10" }'],
@@ -708,6 +732,7 @@ export function stateOf(target: ControlTarget) {
     quality: target.doc.quality,
     tiles: target.doc.tiles.map(describeTile),
     scenes: target.doc.scenes.map((s) => ({ name: s.name, hotkey: s.hotkey })),
+    powers: target.guestPowers,
     guests: {
       running: target.guests.running,
       link: target.guests.link,

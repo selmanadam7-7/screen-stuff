@@ -42,6 +42,7 @@ function fakeTarget(doc: BoardDoc = emptyBoard("Test board")) {
     autoFrame: "off",
     punchedFrom: null,
     guests: { running: false, link: null, publicLink: null, guests: [] },
+    guestPowers: { draw: true, roam: true, files: true, share: false },
 
     setStage(next, options) {
       calls.push(`setStage:${options?.transition ?? "fly"}`);
@@ -160,6 +161,9 @@ function fakeTarget(doc: BoardDoc = emptyBoard("Test board")) {
     },
     toast(message) {
       calls.push(`toast:${message}`);
+    },
+    setGuestPowers(patch) {
+      target.guestPowers = { ...target.guestPowers, ...patch };
     },
     async shot() {
       return "data:image/png;base64,AAAA";
@@ -406,6 +410,14 @@ describe("the rest of the table", () => {
     expect(refusal(await perform(target, "autoframe", { mode: "cursor" }))).toMatch(
       /off, monitor or window/,
     );
+  });
+
+  it("changes only the guest powers it was given", async () => {
+    const { target } = fakeTarget();
+    const result = ok(await perform(target, "powers", { share: true }));
+    expect(result.powers).toMatchObject({ share: true, draw: true, roam: true });
+    // Reading without changing is a legitimate thing to want.
+    expect(ok(await perform(target, "powers", {})).powers).toEqual(target.guestPowers);
   });
 
   it("flashes a line at the operator and nobody else", async () => {

@@ -45,7 +45,9 @@ type GuestEvent =
   | { t: "guest_ink"; id: number; stroke: Stroke }
   | { t: "guest_pointer"; id: number; x: number; y: number }
   | { t: "guest_reaction"; id: number; reaction: string }
-  | { t: "guest_file"; id: number; name: string; mime: string; data_url: string };
+  | { t: "guest_file"; id: number; name: string; mime: string; data_url: string }
+  | { t: "guest_share"; id: number; name: string; source: string; kind: "screen" | "camera" }
+  | { t: "guest_share_ended"; id: number; source: string };
 
 export function App() {
   const isRegionWindow = new URLSearchParams(window.location.search).get("window") === "region";
@@ -379,6 +381,12 @@ function Cockpit() {
           break;
         case "guest_file":
           store.applyGuestFile(event.name, event.mime, event.data_url);
+          break;
+        case "guest_share":
+          store.applyGuestShare(event.name, event.source, event.kind);
+          break;
+        case "guest_share_ended":
+          store.removeGuestShare(event.source);
           break;
       }
     }).then((un) => unlisteners.push(un));

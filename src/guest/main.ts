@@ -26,11 +26,14 @@ import { renderBoard } from "../core/render";
 import { emptyBoard, expireStrokes, newId, reviveBoard } from "../core/doc";
 import { clamp, fitAspect, screenToBoard, simplifyPoints, zoomAround } from "../core/geometry";
 import type { BoardDoc, InkTool, Rect, Stroke, Vec2 } from "../core/types";
+import { GuestShares, WHY_NOT_SHARING, canShare, type ShareKind } from "./share";
 
 interface Powers {
   draw: boolean;
   roam: boolean;
   files: boolean;
+  /** Whether this guest may put their own screen or camera on the board. */
+  share: boolean;
 }
 
 const INK_COLORS = ["#FF5A41", "#F5C062", "#56D9A3", "#8296FF", "#EAE6DC"];
@@ -48,7 +51,7 @@ const state = {
   doc: emptyBoard("Waiting for the host"),
   frame: { ...emptyBoard().frame } as Rect,
   view: null as Rect | null, // null means "following the host"
-  powers: { draw: false, roam: false, files: false } as Powers,
+  powers: { draw: false, roam: false, files: false, share: false } as Powers,
   name: "",
   id: 0,
   connected: false,
@@ -69,6 +72,7 @@ root.innerHTML = `
     <span class="guest-name" id="guest-name"></span>
     <span class="guest-spacer"></span>
     <div class="guest-tools" id="guest-tools"></div>
+    <div class="guest-tools" id="guest-share"></div>
     <div class="guest-reactions" id="guest-reactions"></div>
     <button class="guest-btn" id="guest-follow">Follow the host</button>
   </div>
@@ -97,6 +101,7 @@ const pip = document.getElementById("guest-pip")!;
 const toast = document.getElementById("guest-toast")!;
 const followButton = document.getElementById("guest-follow") as HTMLButtonElement;
 const toolbar = document.getElementById("guest-tools")!;
+const shareBar = document.getElementById("guest-share")!;
 const reactionBar = document.getElementById("guest-reactions")!;
 
 // The token is the last path segment: /g/<token>
@@ -123,6 +128,19 @@ client.onConnectionChange = (connected) => {
   if (!connected && !OUTPUT) flash("reconnecting…");
 };
 
+/**
+ * Sharing is set up before the first message can arrive, because the host may
+ * answer a request faster than a later `const` would be initialised.
+ */
+const shares = new GuestShares({
+  request: (kind) => send({ t: "share", kind }),
+  release: (kind) => send({ t: "stop_share", kind }),
+  send: (slot, seq, width, height, bytes) =>
+    client.publishFrame(slot, seq, width, height, bytes),
+  say: (message) => flash(message),
+  changed: () => renderToolbar(),
+});
+
 client.onControl = (message) => {
   switch (message.t) {
     case "welcome": {
@@ -137,8 +155,11 @@ client.onControl = (message) => {
       // An output view is a feed, not a participant: whatever the host has
       // granted, it never draws and never roams.
       state.powers = OUTPUT
-        ? { draw: false, roam: false, files: false }
+        ? { draw: false, roam: false, files: false, share: false }
         : ((message.powers as Powers) ?? state.powers);
+      // A host who withdraws sharing mid-call takes the picture back with it,
+      // rather than leaving a guest broadcasting into a closed door.
+      if (!state.powers.share) shares.stopAll();
       renderToolbar();
       followButton.style.display = state.powers.roam ? "" : "none";
       if (!state.powers.roam) state.view = null;
@@ -149,8 +170,21 @@ client.onControl = (message) => {
       flash(String(message.message ?? "not allowed"));
       break;
     }
+    case "sharing": {
+      // The host has opened a feed and named the slot to stamp on frames.
+      shares.accepted(String(message.kind) as ShareKind, Number(message.slot ?? 0));
+      flash(message.kind === "screen" ? "your screen is on their board" : "your camera is on their board");
+      break;
+    }
+    case "share_stopped": {
+      shares.stop(String(message.kind) as ShareKind, { tell: false });
+      break;
+    }
     case "closed": {
       state.closed = String(message.reason ?? "the session ended");
+      // Nobody is watching any more; keeping a camera open would be a light
+      // on someone's laptop for no reason at all.
+      shares.stopAll();
       state.dirty = true;
       break;
     }
@@ -189,6 +223,7 @@ function send(message: unknown) {
 // ---------------------------------------------------------------------------
 
 function renderToolbar() {
+  renderShareBar();
   toolbar.innerHTML = "";
   if (!state.powers.draw) return;
 
@@ -222,6 +257,44 @@ function renderToolbar() {
     renderToolbar();
   });
   toolbar.appendChild(off);
+}
+
+/**
+ * Putting your own screen or camera on their board.
+ *
+ * Separate from the ink toolbar because it is a different kind of act: ink is a
+ * gesture on a board you are looking at, this is a picture from your machine
+ * arriving on someone else's.
+ */
+function renderShareBar() {
+  shareBar.innerHTML = "";
+  if (OUTPUT || !state.powers.share) return;
+
+  // The host has allowed it, but this browser cannot do it: an http link on a
+  // LAN address is not a secure context, and `mediaDevices` does not exist
+  // there at all. Say so instead of offering a button that throws.
+  if (!canShare()) {
+    const why = document.createElement("span");
+    why.className = "guest-hint";
+    why.textContent = WHY_NOT_SHARING;
+    shareBar.appendChild(why);
+    return;
+  }
+
+  for (const [kind, label] of [
+    ["screen", "screen"],
+    ["camera", "camera"],
+  ] as Array<[ShareKind, string]>) {
+    const on = shares.isSharing(kind);
+    const button = document.createElement("button");
+    button.className = `guest-btn${on ? " is-sharing" : ""}`;
+    button.textContent = on ? `Stop sharing ${label}` : `Share my ${label}`;
+    button.addEventListener("click", () => {
+      if (on) shares.stop(kind);
+      else void shares.start(kind);
+    });
+    shareBar.appendChild(button);
+  }
 }
 
 followButton.addEventListener("click", () => {

@@ -7,11 +7,11 @@
 
 use crate::capture::{start_stream, Stream, StreamEvent, StreamSpec};
 use crate::guest::{
-    guest_token, is_reaction, lan_address, FromGuest, GuestHub, RunningGuestServer, ToGuest,
-    ToHost,
+    guest_token, is_reaction, lan_address, share_feed_name, FromGuest, GuestHub,
+    RunningGuestServer, ShareKind, ToGuest, ToHost,
     MAX_GUEST_FILE_BYTES,
 };
-use crate::protocol::{encode_frame, FLAG_GEOMETRY_CHANGED};
+use crate::protocol::{decode_frame_header, encode_frame, FLAG_GEOMETRY_CHANGED};
 use crate::sources::SourceId;
 use anyhow::{Context as _, Result};
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
@@ -133,6 +133,24 @@ async fn asset(Path(path): Path<String>, State(state): State<GuestState>) -> imp
 enum GuestReply<'a> {
     Welcome { id: u64, name: &'a str },
     Refused { message: &'a str },
+    /// A share was accepted. `slot` is the id to stamp on the frames that
+    /// follow; `source` is what the tile on the host's board will read from.
+    Sharing { kind: ShareKind, slot: u32, source: String },
+    /// A share ended, whoever ended it.
+    ShareStopped { kind: ShareKind },
+}
+
+/// The frame slot a guest stamps on one kind of share.
+///
+/// Derived rather than handed out, so a reconnecting guest reuses the same one
+/// and two guests can never collide. The high bit keeps these clear of the
+/// stream ids the guest's own media pool allocates for subscriptions.
+fn share_slot(guest_id: u64, kind: ShareKind) -> u32 {
+    let base = 0x4000_0000u32 | ((guest_id as u32 & 0xFFFF) << 4);
+    base | match kind {
+        ShareKind::Screen => 1,
+        ShareKind::Camera => 2,
+    }
 }
 
 async fn guest_socket(
@@ -155,6 +173,10 @@ async fn handle_guest(socket: WebSocket, state: GuestState, output: bool) {
 
     let (events_tx, mut events_rx) = tokio::sync::mpsc::channel::<StreamEvent>(GUEST_QUEUE);
     let mut streams: HashMap<u32, Stream> = HashMap::new();
+    // Feeds this guest is publishing, by the slot they stamp on their frames.
+    // Bounded by the two kinds there are, so a guest cannot open an unbounded
+    // number of them by asking repeatedly.
+    let mut shares: HashMap<u32, (ShareKind, String)> = HashMap::new();
     let mut board_updates = hub.subscribe_guests();
 
     let _ = sink
@@ -178,11 +200,40 @@ async fn handle_guest(socket: WebSocket, state: GuestState, output: bool) {
         tokio::select! {
             message = incoming.next() => {
                 let Some(Ok(message)) = message else { break };
+                // A frame going the other way: a guest publishing their screen
+                // or camera. The slot says which of their own feeds it belongs
+                // to -- and only their own, because `shares` was filled in by
+                // this side using their guest id.
+                if let Message::Binary(bytes) = message {
+                    if let Some((slot, width, height)) = decode_frame_header(&bytes) {
+                        if let Some((_, name)) = shares.get(&slot) {
+                            if u32::from(width) <= GUEST_MAX_WIDTH
+                                && u32::from(height) <= GUEST_MAX_HEIGHT
+                            {
+                                hub.engine.feeds.publish(
+                                    name,
+                                    width,
+                                    height,
+                                    bytes[crate::protocol::FRAME_HEADER_LEN..].to_vec(),
+                                );
+                            }
+                        }
+                    }
+                    continue;
+                }
                 let Message::Text(text) = message else { continue };
                 let Ok(parsed) = serde_json::from_str::<FromGuest>(&text) else { continue };
-                if handle_guest_message(&hub, guest_id, parsed, &mut streams, &events_tx, &mut sink)
-                    .await
-                    .is_err()
+                if handle_guest_message(
+                    &hub,
+                    guest_id,
+                    parsed,
+                    &mut streams,
+                    &mut shares,
+                    &events_tx,
+                    &mut sink,
+                )
+                .await
+                .is_err()
                 {
                     break;
                 }
@@ -238,6 +289,12 @@ async fn handle_guest(socket: WebSocket, state: GuestState, output: bool) {
     }
 
     drop(streams);
+    // A guest who closes the tab must not leave their screen frozen on the
+    // host's board. Closing the feed is what tells everyone watching.
+    for (_, (_, name)) in shares.drain() {
+        hub.engine.feeds.close(&name);
+        hub.tell_host(ToHost::GuestShareEnded { id: guest_id, source: format!("feed:{name}") });
+    }
     hub.leave(guest_id);
     tracing::info!("guest {guest_id} left");
     let _ = sink.close().await;
@@ -248,14 +305,60 @@ async fn handle_guest_message(
     guest_id: u64,
     message: FromGuest,
     streams: &mut HashMap<u32, Stream>,
+    shares: &mut HashMap<u32, (ShareKind, String)>,
     events_tx: &tokio::sync::mpsc::Sender<StreamEvent>,
     sink: &mut futures_util::stream::SplitSink<WebSocket, Message>,
 ) -> Result<(), ()> {
     match message {
+        FromGuest::Share { kind } => {
+            if !hub.powers().share {
+                return refuse(sink, "the host has not opened this up for sharing").await;
+            }
+            // One slot per kind, derived from the guest id, so asking twice
+            // replaces rather than accumulates.
+            let slot = share_slot(guest_id, kind);
+            let name = share_feed_name(guest_id, kind);
+            let source = format!("feed:{name}");
+            shares.insert(slot, (kind, name.clone()));
+
+            let who = hub.name_of(guest_id);
+            hub.tell_host(ToHost::GuestShare {
+                id: guest_id,
+                name: who,
+                source: source.clone(),
+                kind,
+            });
+            let _ = sink
+                .send(Message::Text(
+                    serde_json::to_string(&GuestReply::Sharing { kind, slot, source })
+                        .unwrap_or_default(),
+                ))
+                .await;
+            Ok(())
+        }
+
+        FromGuest::StopShare { kind } => {
+            let slot = share_slot(guest_id, kind);
+            if let Some((_, name)) = shares.remove(&slot) {
+                hub.engine.feeds.close(&name);
+                hub.tell_host(ToHost::GuestShareEnded {
+                    id: guest_id,
+                    source: format!("feed:{name}"),
+                });
+            }
+            let _ = sink
+                .send(Message::Text(
+                    serde_json::to_string(&GuestReply::ShareStopped { kind }).unwrap_or_default(),
+                ))
+                .await;
+            Ok(())
+        }
+
         FromGuest::Hello { name } => {
-            // Re-joining under a name replaces the placeholder one.
-            hub.leave(guest_id);
-            let renamed = hub.join(name);
+            // Renamed in place: the id belongs to the socket, and minting a new
+            // one here would strand the roster entry from every later message,
+            // including the `leave` that runs when they disconnect.
+            let renamed = hub.rename(guest_id, name);
             let _ = sink
                 .send(Message::Text(
                     serde_json::to_string(&GuestReply::Welcome {

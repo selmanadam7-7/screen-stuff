@@ -196,6 +196,18 @@ export function ShareBoard({ open, onClose }: { open: boolean; onClose: () => vo
             <OutputLink url={(publicOn ? guests.publicOutputLink : guests.outputLink)!} />
           ) : null}
 
+          {powers.share && !publicOn && (
+            <p className="share__warn">
+              <ShieldIcon size={14} aria-hidden />
+              <span>
+                Guests can only share on the <strong>Anywhere</strong> link.
+                Browsers hand over a camera or a screen on https addresses and
+                on localhost, and never on a plain network address — so on this
+                link the buttons do not appear.
+              </span>
+            </p>
+          )}
+
           <Group title="Permissions">
             <table className="perm">
               <thead>
@@ -227,6 +239,13 @@ export function ShareBoard({ open, onClose }: { open: boolean; onClose: () => vo
                   see
                   change={powers.files}
                   onChange={(files) => store.setGuestPowers({ files })}
+                />
+                <PermRow
+                  icon={ScreenIcon}
+                  label="Sharing their own screen"
+                  see
+                  change={powers.share}
+                  onChange={(share) => store.setGuestPowers({ share })}
                 />
                 <PermRow
                   icon={EyeIcon}

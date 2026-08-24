@@ -296,6 +296,10 @@ export interface Actions {
   setGuestPowers(patch: Partial<api.GuestPowers>): void;
   applyGuestInk(stroke: Stroke): void;
   applyGuestFile(name: string, mime: string, dataUrl: string): void;
+  /** A guest started sharing: put it on the board, off the stage. */
+  applyGuestShare(name: string, source: string, kind: "screen" | "camera"): void;
+  /** ...and stopped. Take the tile away rather than freezing their last frame. */
+  removeGuestShare(source: string): void;
   publishToGuests(): void;
   setCompact(compact: boolean): void;
   toast(message: string, tone?: "info" | "warn"): void;
@@ -381,7 +385,7 @@ export const useStore = create<Store>((set, get) => ({
     tunnel: { state: "off", url: null, message: "" },
     guests: [],
   },
-  guestPowers: { draw: true, roam: true, files: true },
+  guestPowers: { draw: true, roam: true, files: true, share: false },
 
   // -------------------------------------------------------------------------
 
@@ -1312,6 +1316,40 @@ export const useStore = create<Store>((set, get) => ({
     };
     probe.onerror = () => get().toast(`could not read ${name}`, "warn");
     probe.src = dataUrl;
+  },
+
+  /**
+   * A guest's screen or camera arriving on the board.
+   *
+   * Placed *beside* everything rather than on the stage, deliberately. A guest
+   * cannot put themselves on air: the tile lands in the private part of the
+   * board and reaches an audience only when the host moves the stage to it or
+   * drags it in. That is the same rule every other tile follows, and it is the
+   * reason letting guests share is safe to leave on.
+   */
+  applyGuestShare(name, source, kind) {
+    const state = get();
+    if (state.doc.tiles.some((t) => "source" in t && t.source === source)) return;
+    const width = kind === "camera" ? 420 : 820;
+    const height = kind === "camera" ? 420 * (9 / 16) : 820 * (9 / 16);
+    const spot = doc.placeBeside(state.doc);
+    const tile = doc.makeSourceTile(source, {
+      w: width,
+      h: height,
+      x: spot.x,
+      y: spot.y,
+      label: `${name}'s ${kind}`,
+    });
+    get().addTile(tile);
+    get().toast(`${name} is sharing their ${kind} — it is off the stage until you move it`);
+  },
+
+  removeGuestShare(source) {
+    const state = get();
+    const going = state.doc.tiles.filter((t) => "source" in t && t.source === source);
+    if (!going.length) return;
+    get().mutate((d) => doc.removeTiles(d, going.map((t) => t.id)));
+    get().toast(`${going[0].label || "a guest"} stopped sharing`);
   },
 
   publishToGuests() {

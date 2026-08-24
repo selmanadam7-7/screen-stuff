@@ -255,6 +255,25 @@
   }
 }
 
+/* Why a button is not there, said quietly next to where it would have been. */
+.guest-hint {
+  max-width: 34ch;
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.72;
+}
+
+/* A share that is live reads as live, because leaving your screen on by
+   accident is the failure mode that matters here. */
+.guest-btn.is-sharing {
+  background: var(--danger, #fa3928);
+  border-color: var(--danger, #fa3928);
+  color: #fff;
+}
+.guest-btn.is-sharing:hover {
+  filter: brightness(1.08);
+}
+
 /* ==========================================================================
    Output mode
 

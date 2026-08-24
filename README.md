@@ -453,6 +453,29 @@ An output view is a feed and not a person: it never draws, never roams whatever
 the host has granted, and does not appear in the guest list, so "2 watching"
 never means "one guest and OBS".
 
+## Guests putting their own screens up
+
+Invite someone, turn on **Sharing their own screen** in the permissions matrix,
+and a guest gets two buttons: their screen, or their camera. Whichever they pick
+is encoded in their browser and pushed into a feed on your machine, where it
+becomes an ordinary tile — the renderer, the resolution ladder and the other
+guests watching it never learn where it came from.
+
+**Nothing a guest shares reaches the call by itself.** It lands *beside* the
+board, off the stage, and gets there only when you move the stage to it or drag
+it in. That is the same rule every other tile follows, and it is what makes this
+safe to leave switched on.
+
+The feed name is derived from the guest's id on the host's side and never taken
+from the message. A guest that could name its own feed could publish over the
+host's camera feed and replace the host's face on every screen in the call.
+
+One limitation worth knowing before you promise it to anyone: **guests can only
+share on the Anywhere link.** Browsers expose a camera or a screen in a secure
+context — https, or localhost — and never on a plain `http://192.168.…`
+address, where the API is not restricted but absent. On the LAN link the buttons
+do not appear and say why, and the Share panel tells the host the same thing.
+
 ## Everyone else in the room
 
 A guest can already draw on the board, which is the heavyweight way to point at
@@ -596,6 +619,7 @@ node scripts/check-stage.mjs [base-url]                                 # drive 
 node scripts/check-layout.mjs [base-url]                                # measure the shell at five widths
 node scripts/check-tunnel.mjs                                           # prove off-network sharing really works
 node scripts/check-output.mjs <output-url>                              # the output view at four window shapes
+node scripts/check-guest-share.mjs <secure-link> <lan-link>             # a guest sharing, and the promises around it
 node scripts/shoot-stage.mjs <out-dir> [base-url]                       # the stage in every state
 node scripts/make-icons.mjs                                             # redraw the app icon
 ```

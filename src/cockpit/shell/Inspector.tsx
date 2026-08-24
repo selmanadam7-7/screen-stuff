@@ -1009,6 +1009,12 @@ function GuestsTab() {
             checked={powers.files}
             onChange={(files) => store.setGuestPowers({ files })}
           />
+          <Switch
+            label="Share their screen or camera"
+            hint="Lands on your board off the stage. Nothing they share reaches the call until you put it in the shot."
+            checked={powers.share}
+            onChange={(share) => store.setGuestPowers({ share })}
+          />
         </Group>
       )}
 
