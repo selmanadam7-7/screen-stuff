@@ -25,6 +25,7 @@ import { LAYOUTS, applyLayout, type LayoutKind } from "../core/layouts";
 import { cardFromPreset, type HoldingCard, type LowerThird } from "../core/overlays";
 import { DEFAULT_PIN, pinTile, type Pin } from "../core/pin";
 import { describeRedaction, toTileFraction } from "../core/redact";
+import { contentRect } from "../core/tilebox";
 import {
   ViewHistory,
   fitView,
@@ -1011,7 +1012,11 @@ export const useStore = create<Store>((set, get) => ({
   addRedaction(tileId, rect, style = "solid") {
     const tile = doc.getTile(get().doc, tileId);
     if (!tile) return;
-    const fraction = toTileFraction(tile, rect);
+    // Against the content rectangle, which is where the picture is and
+            // therefore what the operator was drawing on. Storing against the
+            // whole box put the rectangle a title bar higher than the thing it
+            // was meant to cover.
+    const fraction = toTileFraction(contentRect(tile), rect);
     if (!fraction) return;
     get().mutate((d) =>
       doc.addRedaction(d, tileId, {
@@ -1160,6 +1165,8 @@ export const useStore = create<Store>((set, get) => ({
   // --- windows and chrome --------------------------------------------------
 
   async showBoardWindow() {
+    // A window that has just opened has no document at all.
+    forceFullSnapshot();
     await api.boardShow();
     set({ boardVisible: true });
     get().pushSnapshot();
@@ -1227,17 +1234,7 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   pushSnapshot() {
-    const state = get();
-    void sendSnapshot({
-      doc: state.doc,
-      frame: state.frame,
-      pointer: state.spotlightCursor ? state.pointerAt : null,
-      cameraEmphasis: state.cameraEmphasis,
-      replayFrame: state.replayFrame,
-      revision: state.revision,
-      clean: true,
-    });
-    if (state.guests.running) get().publishToGuests();
+    scheduleSnapshot(get);
   },
 
   // --- guests --------------------------------------------------------------
@@ -1386,6 +1383,64 @@ function slugId(name: string): string {
  * of those extra frames tell a guest anything the next one will not.
  */
 let publishTimer: number | null = null;
+/**
+ * One snapshot per animation frame, carrying the document only when it changed.
+ *
+ * `pushSnapshot` is called from everything that touches runtime state, and some
+ * of those run every frame: the speaking meter eases the camera's size on each
+ * rAF, the stage animation writes a new rectangle sixty times a second, the
+ * pointer poll fires several times a second. Each call used to serialise the
+ * entire board across the process boundary to the board window — and again to
+ * every guest — so the app was at its slowest while a stage was flying, which
+ * is precisely when it is on screen.
+ *
+ * Two changes, both of which matter. Calls inside one frame collapse into one
+ * send. And the document rides along only when it is a different object from
+ * the one last sent, which for a moving stage or a talking head is never.
+ */
+let snapshotFrame: number | null = null;
+let lastDocSent: BoardDoc | null = null;
+let lastFullSentAt = 0;
+
+/**
+ * How long the board may go without being sent the whole document.
+ *
+ * A floor, not a schedule. The board window can open after the cockpit has
+ * already settled, or miss a message, and then it would sit on a stale document
+ * until the operator happened to touch something. One full send every couple of
+ * seconds means any disagreement heals by itself, and costs one serialisation
+ * where there used to be a hundred and twenty.
+ */
+const FULL_SNAPSHOT_EVERY_MS = 2000;
+
+/** Make the next snapshot carry the document, whatever else has changed. */
+export function forceFullSnapshot() {
+  lastDocSent = null;
+}
+
+function scheduleSnapshot(get: () => Store) {
+  if (snapshotFrame !== null) return;
+  snapshotFrame = requestAnimationFrame(() => {
+    snapshotFrame = null;
+    const state = get();
+    const now = performance.now();
+    const docChanged =
+      state.doc !== lastDocSent || now - lastFullSentAt > FULL_SNAPSHOT_EVERY_MS;
+    if (docChanged) lastFullSentAt = now;
+    lastDocSent = state.doc;
+    void sendSnapshot({
+      doc: docChanged ? state.doc : undefined,
+      frame: state.frame,
+      pointer: state.spotlightCursor ? state.pointerAt : null,
+      cameraEmphasis: state.cameraEmphasis,
+      replayFrame: state.replayFrame,
+      revision: state.revision,
+      clean: true,
+    });
+    if (state.guests.running) schedulePublish(get);
+  });
+}
+
 function schedulePublish(get: () => Store) {
   if (publishTimer !== null) return;
   publishTimer = window.setTimeout(() => {

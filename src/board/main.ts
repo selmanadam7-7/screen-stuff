@@ -113,7 +113,11 @@ async function boot() {
 }
 
 function applySnapshot(snapshot: Snapshot) {
-  state.doc = snapshot.doc;
+  // No document means nothing about the board changed, only where the shot is
+  // or how loudly someone is talking. Keeping the one we have is the whole
+  // saving: those messages arrive every frame.
+  const changed = snapshot.doc !== undefined;
+  if (snapshot.doc) state.doc = snapshot.doc;
   state.frame = snapshot.frame;
   state.pointer = snapshot.pointer ?? null;
   state.cameraEmphasis = snapshot.cameraEmphasis ?? 0;
@@ -121,9 +125,11 @@ function applySnapshot(snapshot: Snapshot) {
   if (snapshot.revision !== state.revision) {
     state.revision = snapshot.revision;
   }
-  resizeOutput(snapshot);
-  pool?.setOptions({ fps: snapshot.doc.fps, quality: snapshot.doc.quality });
-  pool?.sync(snapshot.doc, currentScale());
+  if (changed) {
+    resizeOutput(state.doc);
+    pool?.setOptions({ fps: state.doc.fps, quality: state.doc.quality });
+    pool?.sync(state.doc, currentScale());
+  }
   markDirty();
 }
 
@@ -132,8 +138,8 @@ function applySnapshot(snapshot: Snapshot) {
  * pixels a guest receives do not change when the window is nudged. CSS scales
  * it to fit whatever the window happens to be.
  */
-function resizeOutput(snapshot: Snapshot) {
-  const aspect = snapshot.doc.aspect || 16 / 9;
+function resizeOutput(doc: BoardDoc) {
+  const aspect = doc.aspect || 16 / 9;
   const width = DEFAULT_OUTPUT.width;
   const height = Math.round(width / aspect);
   if (canvas.width !== width || canvas.height !== height) {

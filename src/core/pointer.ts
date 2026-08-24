@@ -17,6 +17,7 @@
 
 import type { BoardDoc, Rect, Tile } from "./types";
 import { fitAspect } from "./geometry";
+import { contentPointToBoard } from "./tilebox";
 
 /** Where the pointer is on the desk, and whether a button is down. */
 export interface Cursor {
@@ -76,11 +77,15 @@ export function cursorOnBoard(
   });
   if (!tile || monitor.width <= 0 || monitor.height <= 0) return null;
 
-  return {
-    x: tile.x + ((cursor.x - monitor.x) / monitor.width) * tile.w,
-    y: tile.y + ((cursor.y - monitor.y) / monitor.height) * tile.h,
-    tile,
-  };
+  // Through the tile's *content* rectangle rather than its box. A source tile
+  // has a title bar above the picture and letterboxing beside it, so mapping
+  // into the box put the ring low and slightly adrift -- which on a shared
+  // screen reads as the app pointing at the wrong thing.
+  const at = contentPointToBoard(tile, {
+    x: (cursor.x - monitor.x) / monitor.width,
+    y: (cursor.y - monitor.y) / monitor.height,
+  });
+  return { x: at.x, y: at.y, tile };
 }
 
 /**

@@ -16,6 +16,7 @@ import {
   punchRect,
   rippleProgress,
 } from "../src/core/pointer";
+import { contentRect } from "../src/core/tilebox";
 import type { BoardDoc, Tile } from "../src/core/types";
 
 const MONITORS = [
@@ -28,12 +29,28 @@ const screen = (id: string, x = 0) =>
   makeSourceTile(id, { x, y: 0, w: 1600, h: 900 }) as Tile;
 
 describe("finding the cursor on the board", () => {
-  it("maps a desktop point into the tile showing that monitor", () => {
+  it("maps a desktop point onto the tile's picture, not its box", () => {
+    // This test used to assert the centre of the tile's *box*, which is what
+    // shipped and what was visibly wrong: a source tile has a title bar above
+    // the picture, so the ring sat a title bar too low and drifted further
+    // wherever the picture was letterboxed. The centre of a monitor has to land
+    // on the centre of the picture of that monitor.
     const tile = screen("monitor:1");
+    const content = contentRect(tile);
     const at = cursorOnBoard(board(tile), { x: 1280, y: 720, down: false }, MONITORS)!;
-    expect(at.x).toBeCloseTo(tile.x + tile.w / 2);
-    expect(at.y).toBeCloseTo(tile.y + tile.h / 2);
+    expect(at.x).toBeCloseTo(content.x + content.w / 2);
+    expect(at.y).toBeCloseTo(content.y + content.h / 2);
     expect(at.tile.id).toBe(tile.id);
+    // And that really is different from the box, or this test proves nothing.
+    expect(at.y).not.toBeCloseTo(tile.y + tile.h / 2, 1);
+  });
+
+  it("puts the corners of a screen on the corners of its picture", () => {
+    const tile = screen("monitor:1");
+    const content = contentRect(tile);
+    const topLeft = cursorOnBoard(board(tile), { x: 0, y: 0, down: false }, MONITORS)!;
+    expect(topLeft.x).toBeCloseTo(content.x);
+    expect(topLeft.y).toBeCloseTo(content.y);
   });
 
   it("finds the right tile when the cursor is on the other monitor", () => {

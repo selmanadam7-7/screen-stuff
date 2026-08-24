@@ -26,9 +26,20 @@ import {
   toTileFraction,
   type Redaction,
 } from "../src/core/redact";
+import { contentRect } from "../src/core/tilebox";
 import type { BoardDoc, Tile } from "../src/core/types";
 
 const tile = () => makeSourceTile("monitor:1", { x: 100, y: 50, w: 800, h: 450 }) as Tile;
+
+/**
+ * Where the picture is, which is what a redaction is measured against.
+ *
+ * Not the tile's box: a source tile has a title bar above the picture and
+ * letterboxing beside it. Measuring against the box is exactly the bug these
+ * tests now hold shut -- what you drew over and what got covered were two
+ * different rectangles.
+ */
+const basis = (t: Tile) => contentRect(t);
 
 const region = (over: Partial<Redaction> = {}): Redaction => ({
   id: "r1",
@@ -48,7 +59,8 @@ function withTile(t: Tile): BoardDoc {
 describe("storing a region against a tile", () => {
   it("converts a board rectangle into fractions of the tile", () => {
     const t = tile();
-    const f = toTileFraction(t, { x: 500, y: 50, w: 400, h: 112.5 })!;
+    const b = basis(t);
+    const f = toTileFraction(b, { x: b.x + b.w / 2, y: b.y, w: b.w / 2, h: b.h / 4 })!;
     expect(f.x).toBeCloseTo(0.5);
     expect(f.y).toBeCloseTo(0);
     expect(f.w).toBeCloseTo(0.5);
@@ -58,9 +70,9 @@ describe("storing a region against a tile", () => {
   it("survives the tile being moved", () => {
     const before = tile();
     const f = region();
-    const rectBefore = toBoardRect(before, f);
+    const rectBefore = toBoardRect(before, f, basis(before));
     const moved = { ...before, x: before.x + 900, y: before.y - 300 } as Tile;
-    const rectAfter = toBoardRect(moved, f);
+    const rectAfter = toBoardRect(moved, f, basis(moved));
     // Same place on the tile, wherever the tile went.
     expect(rectAfter.x - moved.x).toBeCloseTo(rectBefore.x - before.x);
     expect(rectAfter.w).toBeCloseTo(rectBefore.w);
@@ -69,11 +81,12 @@ describe("storing a region against a tile", () => {
   it("survives the tile being resized", () => {
     const small = tile();
     const big = { ...small, w: small.w * 2, h: small.h * 2 } as Tile;
-    const r = toBoardRect(big, region());
-    // Still the top-right quarter-height half-width, just bigger.
-    expect(r.w).toBeCloseTo(big.w * 0.5);
-    expect(r.h).toBeCloseTo(big.h * 0.25);
-    expect(r.x).toBeCloseTo(big.x + big.w * 0.5);
+    const b = basis(big);
+    const r = toBoardRect(big, region(), b);
+    // Still the top-right quarter-height half-width of the picture.
+    expect(r.w).toBeCloseTo(b.w * 0.5);
+    expect(r.h).toBeCloseTo(b.h * 0.25);
+    expect(r.x).toBeCloseTo(b.x + b.w * 0.5);
   });
 
   it("clamps a rectangle dragged past the edge of the tile", () => {

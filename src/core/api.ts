@@ -389,16 +389,38 @@ export interface ControlStatus {
 
 const CONTROL_OFF: ControlStatus = { running: false, port: 0, token: "", url: "" };
 
-export const controlStart = (port: number, token: string) =>
-  runningInTauri()
-    ? invoke<ControlStatus>("control_start", { port, token })
-    : Promise.resolve(CONTROL_OFF);
+/**
+ * Whether the control API is actually listening.
+ *
+ * Kept here because this is the only module that starts and stops it, and read
+ * by the cockpit bridge to decide whether publishing state is worth doing at
+ * all. Without it the bridge serialised the whole board on every store write --
+ * sixty times a second while the camera's speaking meter was running -- for
+ * nobody, because the server was switched off.
+ */
+let listening = false;
+export const controlIsLive = () => listening;
 
-export const controlStop = () =>
-  runningInTauri() ? invoke<ControlStatus>("control_stop") : Promise.resolve(CONTROL_OFF);
+export const controlStart = async (port: number, token: string): Promise<ControlStatus> => {
+  if (!runningInTauri()) return CONTROL_OFF;
+  const status = await invoke<ControlStatus>("control_start", { port, token });
+  listening = status.running;
+  return status;
+};
 
-export const controlStatus = () =>
-  runningInTauri() ? invoke<ControlStatus>("control_status") : Promise.resolve(CONTROL_OFF);
+export const controlStop = async (): Promise<ControlStatus> => {
+  if (!runningInTauri()) return CONTROL_OFF;
+  const status = await invoke<ControlStatus>("control_stop");
+  listening = status.running;
+  return status;
+};
+
+export const controlStatus = async (): Promise<ControlStatus> => {
+  if (!runningInTauri()) return CONTROL_OFF;
+  const status = await invoke<ControlStatus>("control_status");
+  listening = status.running;
+  return status;
+};
 
 export const controlNewToken = () =>
   runningInTauri() ? invoke<string>("control_new_token") : Promise.resolve("");

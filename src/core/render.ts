@@ -20,17 +20,13 @@ import { emphasisedRect } from "./voice";
 import { stageHandles, stageTabFor } from "./stage";
 import { readTheme, type Theme } from "./theme";
 import { applyPins } from "./pin";
+import { contentRect, titleBarHeight } from "./tilebox";
 import type { BoardDoc, Rect, Stroke, Tile, Vec2 } from "./types";
 
-/** Height of a tile's title bar, in board units, before zoom is applied. */
-export const TILE_BAR = 34;
-
-/** Tiles that read as a window and get a title bar drawn above their content. */
-const WINDOWED: ReadonlySet<string> = new Set(["source", "web", "video", "pdf"]);
-
-export function hasTitleBar(tile: Tile): boolean {
-  return WINDOWED.has(tile.kind);
-}
+// The tile's own geometry lives in `tilebox.ts` so that the pointer and the
+// redaction tools can agree with the renderer about where a picture is. These
+// two are re-exported because half the app already imports them from here.
+export { TILE_BAR, hasTitleBar } from "./tilebox";
 
 /** Anything the renderer can paint into a tile. */
 export interface Drawable {
@@ -220,7 +216,7 @@ function drawTile(input: RenderInput, tile: Tile, scale: number, theme: Theme) {
   if (grown) tile = { ...tile, ...grown };
   const box = tileRect(tile);
   const center = rectCenter(box);
-  const bar = hasTitleBar(tile) ? Math.min(TILE_BAR, box.h * 0.16) : 0;
+  const bar = titleBarHeight(tile);
   const body: Rect = { x: box.x, y: box.y + bar, w: box.w, h: box.h - bar };
 
   ctx.save();
@@ -287,7 +283,16 @@ function drawTile(input: RenderInput, tile: Tile, scale: number, theme: Theme) {
   // Covered before the clip is released, so a redaction can never be drawn
   // outside the tile it belongs to — and before the title bar, which is ours
   // rather than the captured window's.
-  drawRedactions(ctx, tile, body, scale, theme);
+  // The live frame's size when there is one, so the redaction sits on the
+  // picture even before the tile has learned its source's native size.
+  const shown = media.resolve(tile);
+  drawRedactions(
+    ctx,
+    tile,
+    contentRect(tile, shown ? { width: shown.width, height: shown.height } : null),
+    scale,
+    theme,
+  );
 
   ctx.restore();
 
@@ -887,7 +892,8 @@ function drawStage(
 function drawRedactions(
   ctx: CanvasRenderingContext2D,
   tile: Tile,
-  body: Rect,
+  /** Where the picture is: what the redaction was drawn on and covers. */
+  content: Rect,
   scale: number,
   theme: Theme,
 ) {
@@ -895,7 +901,7 @@ function drawRedactions(
   if (redactions.length === 0) return;
 
   for (const redaction of redactions) {
-    const r = toBoardRect(tile, redaction, body);
+    const r = toBoardRect(tile, redaction, content);
     ctx.save();
     if (redaction.style === "blur") {
       // Re-draw what is underneath through a blur, clipped to the region. Only

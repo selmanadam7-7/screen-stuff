@@ -620,6 +620,8 @@ node scripts/check-layout.mjs [base-url]                                # measur
 node scripts/check-tunnel.mjs                                           # prove off-network sharing really works
 node scripts/check-output.mjs <output-url>                              # the output view at four window shapes
 node scripts/check-guest-share.mjs <secure-link> <lan-link>             # a guest sharing, and the promises around it
+node scripts/check-placement.mjs [base-url]                             # a redaction lands where it was drawn
+node scripts/measure-snapshots.mjs [base-url]                           # what crosses to the board window per second
 node scripts/shoot-stage.mjs <out-dir> [base-url]                       # the stage in every state
 node scripts/make-icons.mjs                                             # redraw the app icon
 ```

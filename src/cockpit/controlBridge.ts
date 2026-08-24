@@ -34,6 +34,15 @@ interface Request {
 const SHOT_WIDTH = 1920;
 
 /**
+ * How often state may be published, at most.
+ *
+ * Four times a second. Nothing watching this is reading faster than that, and
+ * the alternative -- once per store write -- is sixty full serialisations of
+ * the board every second while the camera meter is running.
+ */
+const PUBLISH_EVERY_MS = 250;
+
+/**
  * Draw the stage into an offscreen canvas and hand back a PNG.
  *
  * Renders the *stage*, not the view: someone asking the API for the shot wants
@@ -99,20 +108,45 @@ export function installControlBridge(pool: () => MediaPool | null): () => void {
     else off();
   });
 
-  // State, on every change. Zustand fires this for any store write, so it is
-  // compared against the last publish rather than sent blindly: the store also
-  // changes when the operator moves their mouse over a tile, and a WebSocket
-  // watcher does not need to hear about hover.
+  // State, when it changes -- but not on every store write, and not at all when
+  // nothing is listening.
+  //
+  // This was the first version's mistake and it cost real frames. Zustand fires
+  // a subscriber on *any* write, and the store is written to constantly by
+  // things that are not board state: the speaking meter eases the camera's size
+  // on every animation frame, the pointer poll runs several times a second, the
+  // stage animation writes a new frame sixty times a second. Serialising the
+  // whole board on each of those -- for an API that is switched off by default,
+  // and that no Stream Deck needs at sixty hertz -- made the app stutter while
+  // it was being screen-shared, which is the one moment it must not.
+  //
+  // So: skip entirely unless the server is up, and coalesce the rest onto a
+  // trailing timer. A watcher gets a fresh snapshot a few times a second, which
+  // is faster than anyone can read a button.
   let lastSent = "";
-  const publish = () => {
-    if (!alive) return;
+  let pending = 0;
+
+  const sendNow = () => {
+    pending = 0;
+    if (!alive || !api.controlIsLive()) return;
     const next = stateOf(target());
     const encoded = JSON.stringify(next);
     if (encoded === lastSent) return;
     lastSent = encoded;
     void api.controlPublish(next);
   };
+
+  const publish = () => {
+    // The cheapest possible check first: one boolean, on the hot path.
+    if (!alive || !api.controlIsLive() || pending) return;
+    pending = window.setTimeout(sendNow, PUBLISH_EVERY_MS);
+  };
+
   stopping.push(useStore.subscribe(publish));
+  stopping.push(() => {
+    if (pending) window.clearTimeout(pending);
+    pending = 0;
+  });
   publish();
 
   return () => {

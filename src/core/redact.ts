@@ -45,13 +45,24 @@ export function redactionsOf(tile: Tile): Redaction[] {
   return (tile as { redactions?: Redaction[] }).redactions ?? [];
 }
 
-/** Turn a board-space rectangle into one stored against a tile. */
-export function toTileFraction(tile: Tile, rect: Rect): Omit<Redaction, "id" | "style" | "label"> | null {
-  if (tile.w <= 0 || tile.h <= 0) return null;
-  const x = (rect.x - tile.x) / tile.w;
-  const y = (rect.y - tile.y) / tile.h;
-  const w = rect.w / tile.w;
-  const h = rect.h / tile.h;
+/**
+ * Turn a board-space rectangle into one stored against a tile.
+ *
+ * `basis` is the rectangle the fractions are measured against, and it is the
+ * tile's *content* rather than its box: a source tile has a title bar above the
+ * picture and letterboxing beside it, and a redaction covers the picture. This
+ * took a rectangle when it took a whole tile, which is how it came to disagree
+ * with the renderer about where the same redaction was.
+ */
+export function toTileFraction(
+  basis: Rect,
+  rect: Rect,
+): Omit<Redaction, "id" | "style" | "label"> | null {
+  if (basis.w <= 0 || basis.h <= 0) return null;
+  const x = (rect.x - basis.x) / basis.w;
+  const y = (rect.y - basis.y) / basis.h;
+  const w = rect.w / basis.w;
+  const h = rect.h / basis.h;
   if (w < MIN_REDACTION || h < MIN_REDACTION) return null;
   // Clamped to the tile: a redaction is a promise about this tile, and one that
   // hangs over the edge is covering something it does not own.
@@ -63,9 +74,17 @@ export function toTileFraction(tile: Tile, rect: Rect): Omit<Redaction, "id" | "
   return { x: left, y: top, w: right - left, h: bottom - top };
 }
 
-/** And back again, for drawing and hit-testing. */
-export function toBoardRect(tile: Tile, redaction: Redaction, body?: Rect): Rect {
-  const box = body ?? { x: tile.x, y: tile.y, w: tile.w, h: tile.h };
+/**
+ * And back again, for drawing and hit-testing.
+ *
+ * `basis` has no default any more. It used to fall back to the tile's box,
+ * which is never right for a windowed tile, and a silent wrong answer is how
+ * the storing side and the drawing side ended up measuring against different
+ * rectangles without anything failing.
+ */
+export function toBoardRect(tile: Tile, redaction: Redaction, basis: Rect): Rect {
+  void tile;
+  const box = basis;
   return {
     x: box.x + redaction.x * box.w,
     y: box.y + redaction.y * box.h,

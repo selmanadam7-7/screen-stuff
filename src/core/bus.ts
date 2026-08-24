@@ -16,7 +16,17 @@ export const COMMAND_EVENT = "sd:command";
 
 /** What the board needs in order to paint. */
 export interface Snapshot {
-  doc: BoardDoc;
+  /**
+   * The document — sent only when it has actually changed.
+   *
+   * Absent means "the one you already have". The board is told sixty times a
+   * second while the stage is flying or the speaking meter is running, and
+   * almost none of those carry a document change; serialising every tile,
+   * stroke and redaction across the process boundary each time was the single
+   * most expensive thing the app did, and it did it hardest exactly when it was
+   * being screen-shared.
+   */
+  doc?: BoardDoc;
   /** The rectangle the audience sees. Animated by the cockpit. */
   frame: Rect;
   /** Where the operator is pointing, for the spotlight. Null when it is off. */
