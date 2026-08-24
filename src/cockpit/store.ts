@@ -23,6 +23,7 @@ import {
 import type { AutoFrameMode, AutoFrameTarget } from "../core/autoframe";
 import { LAYOUTS, applyLayout, type LayoutKind } from "../core/layouts";
 import { cardFromPreset, type HoldingCard, type LowerThird } from "../core/overlays";
+import { DEFAULT_PIN, pinTile, type Pin } from "../core/pin";
 import { describeRedaction, toTileFraction } from "../core/redact";
 import {
   ViewHistory,
@@ -199,6 +200,10 @@ export interface Actions {
   deleteSelection(): void;
   duplicateSelection(): void;
   toggleLock(): void;
+  /** Park a tile in a corner of the shot, so it moves with it. Null frees it. */
+  setPin(id: string, pin: Pin | null): void;
+  /** Pin the camera to the corner of the shot, or let it go. */
+  toggleCameraPin(): void;
   order(direction: "front" | "back"): void;
   arrange(scope: "selection" | "all"): void;
 
@@ -582,6 +587,30 @@ export const useStore = create<Store>((set, get) => ({
     const { doc: next, ids: created } = doc.duplicateTiles(state.doc, ids);
     get().mutate(() => next);
     set({ selection: created });
+  },
+
+  setPin(id, pin) {
+    get().mutate((d) => pinTile(d, id, pin));
+    get().toast(pin ? "pinned to the corner of the shot" : "no longer pinned");
+  },
+
+  /**
+   * The one-click version, for the thing people actually want: my face, in the
+   * corner, wherever the shot goes.
+   *
+   * Finds the camera itself rather than asking the operator to select it first,
+   * because by the time you want this you are usually already presenting.
+   */
+  toggleCameraPin() {
+    const state = get();
+    const camera =
+      state.doc.tiles.find((t) => t.kind === "camera" && !t.hidden) ??
+      state.doc.tiles.find((t) => t.kind === "camera");
+    if (!camera) {
+      get().toast("there is no camera on the board yet", "warn");
+      return;
+    }
+    get().setPin(camera.id, camera.pin ? null : DEFAULT_PIN);
   },
 
   toggleLock() {

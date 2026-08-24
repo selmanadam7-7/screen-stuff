@@ -310,6 +310,28 @@ was saved with "back in a minute" up does not put you back behind it.
 you do, sized as a proportion of the stage so it looks the same on a punched-in
 shot as on the whole board.
 
+## Keeping your face in the shot
+
+Auto-framing follows your work between screens. Without this, your camera does
+not: it sits where you parked it, and you end up on a call where your face is
+visible only while you happen to be working on the monitor it was left on.
+
+**Director → Keep my camera in the corner** pins it. A pinned tile has no fixed
+place on the board — its box is derived from wherever the stage is, every frame,
+so it rides along through auto-framing, scenes, punch-ins, takes and a drag of
+the stage handles.
+
+Derived rather than written back, and that is the whole design. Storing the new
+position on every stage change would fill the undo stack with camera moves
+nobody made, and during a fly the camera would jump to the destination while the
+shot was still travelling. Computing it from the *animated* frame means it flies
+with the shot.
+
+Any tile can be pinned, not just the camera — corner, size and inset are in the
+inspector. A pinned tile shows corner brackets rather than resize handles,
+because its size is a fraction of the shot rather than a rectangle on the board.
+Drag it to another corner and it re-pins there.
+
 ## A camera that knows when you are talking
 
 **Grow while I talk**, on a camera tile. When you speak, the camera grows; when

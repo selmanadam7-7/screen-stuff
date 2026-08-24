@@ -435,7 +435,18 @@ function tick(now: number) {
       }
     : state.doc;
 
-  renderBoard({ ctx, width: canvas.width, height: canvas.height, view, doc: live, media: pool, now });
+  // `state.frame` is the host's stage even when this guest has roamed away
+  // from it, which is exactly what a pinned tile should be measured against.
+  renderBoard({
+    ctx,
+    width: canvas.width,
+    height: canvas.height,
+    view,
+    stage: state.frame,
+    doc: live,
+    media: pool,
+    now,
+  });
 
   // A guest who has roamed sees where the host is pointing, so they can find
   // their way back to the conversation.
@@ -465,7 +476,16 @@ function renderOutput(now: number, dpr: number) {
   // renderBoard draws from its own origin outwards, so translating first puts
   // the whole thing inside the box without it needing to know about one.
   ctx.translate(box.x, box.y);
-  renderBoard({ ctx, width: box.w, height: box.h, view: stage, doc: state.doc, media: pool, now });
+  renderBoard({
+    ctx,
+    width: box.w,
+    height: box.h,
+    view: stage,
+    stage,
+    doc: state.doc,
+    media: pool,
+    now,
+  });
   ctx.restore();
 }
 

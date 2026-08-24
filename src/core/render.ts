@@ -19,6 +19,7 @@ import { redactionsOf, toBoardRect } from "./redact";
 import { emphasisedRect } from "./voice";
 import { stageHandles, stageTabFor } from "./stage";
 import { readTheme, type Theme } from "./theme";
+import { applyPins } from "./pin";
 import type { BoardDoc, Rect, Stroke, Tile, Vec2 } from "./types";
 
 /** Height of a tile's title bar, in board units, before zoom is applied. */
@@ -77,6 +78,16 @@ export interface RenderInput {
   doc: BoardDoc;
   media: MediaResolver;
   now: number;
+  /**
+   * The rectangle the audience is seeing, when it is not the view.
+   *
+   * Only pinned tiles read this, and they must read the *animated* frame rather
+   * than the document's saved stage: during a fly, a camera pinned to the
+   * destination would sit outside the shot until the shot caught up. The board
+   * window's view already is the stage; the cockpit's is wherever the operator
+   * has scrolled, so it passes this.
+   */
+  stage?: Rect;
   chrome?: ChromeOptions;
   /**
    * Where the operator is pointing, drawn for the audience.
@@ -139,7 +150,13 @@ function chromeColors(theme: Theme) {
 }
 
 export function renderBoard(input: RenderInput): void {
-  const { ctx, width, height, view, doc, chrome } = input;
+  // Pinned tiles are positioned here rather than by each caller, so the board,
+  // the cockpit and every guest cannot disagree about where the camera is.
+  // `applyPins` is idempotent and returns the document untouched when nothing
+  // is pinned, so doing it centrally costs nothing.
+  const doc = applyPins(input.doc, input.stage ?? input.doc.frame);
+  input = { ...input, doc };
+  const { ctx, width, height, view, chrome } = input;
   const scale = width / view.w;
   const theme = input.theme ?? readTheme();
 
@@ -1154,7 +1171,26 @@ function drawSelection(ctx: CanvasRenderingContext2D, tile: Tile, px: number, th
   ctx.lineWidth = 2 * px;
   ctx.strokeRect(tile.x, tile.y, tile.w, tile.h);
 
-  if (!tile.locked) {
+  if (tile.pin) {
+    // A pinned tile has no grab handles, because its box is a fraction of the
+    // stage rather than a rectangle on the board — dragging one would have
+    // nothing to write to. A corner bracket says "this one is parked" instead.
+    const arm = Math.min(tile.w, tile.h) * 0.18;
+    ctx.strokeStyle = CHROME.selection;
+    ctx.lineWidth = 3 * px;
+    for (const [cx, cy, dx, dy] of [
+      [tile.x, tile.y, 1, 1],
+      [tile.x + tile.w, tile.y, -1, 1],
+      [tile.x, tile.y + tile.h, 1, -1],
+      [tile.x + tile.w, tile.y + tile.h, -1, -1],
+    ]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + dx * arm, cy);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx, cy + dy * arm);
+      ctx.stroke();
+    }
+  } else if (!tile.locked) {
     // Round handles on a white chip, as in the references.
     const size = HANDLE_SIZE * px;
     ctx.fillStyle = CHROME.handle;

@@ -16,6 +16,7 @@ import { homeView } from "../../core/stage";
 import {
   AddIcon,
   BackIcon,
+  CameraIcon,
   CardIcon,
   LayoutIcon,
   PreviewIcon,
@@ -217,6 +218,10 @@ function DirectorMenu() {
   const mode = useStore((s) => s.autoFrame);
   const holding = useStore((s) => s.autoFrameOn);
   const pointer = useStore((s) => s.spotlightCursor);
+  const hasCamera = useStore((s) => s.doc.tiles.some((t) => t.kind === "camera"));
+  const cameraPinned = useStore((s) =>
+    s.doc.tiles.some((t) => t.kind === "camera" && !!t.pin),
+  );
   const count = useStore((s) => s.doc.tiles.filter((t) => !t.hidden).length);
   const selected = useStore((s) => s.selection.length);
   const store = useActions();
@@ -276,6 +281,17 @@ function DirectorMenu() {
               icon: WindowIcon,
               checked: mode === "window",
               onSelect: () => store.setAutoFrame(mode === "window" ? "off" : "window"),
+            },
+            // Directly under the two following options, because this is the
+            // thing that makes them wearable: without it, following the work to
+            // another screen leaves your face behind on the one you left.
+            {
+              label: "Keep my camera in the corner",
+              icon: CameraIcon,
+              shortcut: cameraPinned ? "on" : undefined,
+              checked: cameraPinned,
+              disabled: !hasCamera,
+              onSelect: () => store.toggleCameraPin(),
             },
             { separator: true },
             {

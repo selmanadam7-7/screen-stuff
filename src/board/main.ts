@@ -215,6 +215,9 @@ function tick(now: number) {
     width: canvas.width,
     height: canvas.height,
     view: state.frame,
+    // Here the view and the stage are the same rectangle, but saying so keeps
+    // pinned tiles working if that ever stops being true.
+    stage: state.frame,
     doc: state.doc,
     media: pool ?? { resolve: () => null },
     now,

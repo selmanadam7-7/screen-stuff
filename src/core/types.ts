@@ -9,6 +9,7 @@
  */
 
 import type { HoldingCard, LowerThird } from "./overlays";
+import type { Pin } from "./pin";
 import type { Redaction } from "./redact";
 
 export type Rect = { x: number; y: number; w: number; h: number };
@@ -48,6 +49,14 @@ export interface TileBase {
    * or re-tuned to a different capture resolution. See `core/redact.ts`.
    */
   redactions?: Redaction[];
+  /**
+   * Parked in a corner of the shot, and moves with it.
+   *
+   * A pinned tile ignores the geometry above: its box is derived from wherever
+   * the stage is, every frame. See `core/pin.ts` for why that is derived rather
+   * than written back.
+   */
+  pin?: Pin | null;
 }
 
 export interface SourceTile extends TileBase {

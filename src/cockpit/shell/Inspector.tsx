@@ -42,6 +42,14 @@ import {
 } from "../../ui/primitives";
 import type { CameraTile, NoteTile, PdfTile, SourceTile, Tile, VideoTile, WebTile } from "../../core/types";
 import { redactionsOf } from "../../core/redact";
+import {
+  CORNERS,
+  DEFAULT_PIN,
+  MAX_MARGIN,
+  MAX_SIZE,
+  MIN_SIZE,
+  type PinCorner,
+} from "../../core/pin";
 import { MIN_STAGE, stageLabel } from "../../core/stage";
 import { selectedTiles, useActions, useStore, webLabels } from "../store";
 import { useShallow } from "zustand/react/shallow";
@@ -144,6 +152,7 @@ function TileInspector({ tile }: { tile: Tile }) {
       {tile.kind === "pdf" && <PdfGroup tile={tile as PdfTile} />}
       {tile.kind === "note" && <NoteGroup tile={tile as NoteTile} />}
 
+      <PinGroup tile={tile} />
       <FrameGroup tile={tile} />
       <AppearanceGroup tile={tile} />
       {tile.kind !== "note" && <PrivacyGroup tile={tile} />}
@@ -234,12 +243,76 @@ function MultiInspector({ count }: { count: number }) {
    Property groups
    ========================================================================== */
 
+/**
+ * Parked in a corner of the shot.
+ *
+ * Sits above the coordinates rather than below them, because when a tile is
+ * pinned the coordinates do not describe where it is — the corner does, and a
+ * panel that leads with numbers nobody is reading is a panel that lies.
+ */
+function PinGroup({ tile }: { tile: Tile }) {
+  const store = useActions();
+  const pin = tile.pin ?? null;
+
+  return (
+    <Group title="Corner of the shot">
+      <Switch
+        label="Keep it in the corner of the shot"
+        hint="Moves with the stage — including when auto-framing follows you to another screen."
+        checked={!!pin}
+        onChange={(on) => store.setPin(tile.id, on ? DEFAULT_PIN : null)}
+      />
+      {pin && (
+        <>
+          <Field label="Corner" inline>
+            <Select
+              size="sm"
+              value={pin.corner}
+              onChange={(corner) => store.setPin(tile.id, { ...pin, corner: corner as PinCorner })}
+              options={CORNERS.map((c) => ({ value: c.value, label: c.label }))}
+            />
+          </Field>
+          <Field label="Size">
+            <Slider
+              min={MIN_SIZE * 100}
+              max={MAX_SIZE * 100}
+              step={1}
+              value={pin.size * 100}
+              onChange={(v) => store.setPin(tile.id, { ...pin, size: v / 100 })}
+              format={(v) => `${Math.round(v)}% of the shot`}
+            />
+          </Field>
+          <Field label="Inset">
+            <Slider
+              min={0}
+              max={MAX_MARGIN * 100}
+              step={0.5}
+              value={pin.margin * 100}
+              onChange={(v) => store.setPin(tile.id, { ...pin, margin: v / 100 })}
+              format={(v) => `${v.toFixed(1)}%`}
+            />
+          </Field>
+          <p className="inspector__note">
+            Drag it to another corner on the board and it re-pins there.
+          </p>
+        </>
+      )}
+    </Group>
+  );
+}
+
 function FrameGroup({ tile }: { tile: Tile }) {
   const store = useActions();
   const set = (patch: Partial<Tile>) => store.patchTile(tile.id, patch);
 
   return (
     <Group title="Frame">
+      {tile.pin && (
+        <p className="inspector__note">
+          Pinned to the {CORNERS.find((c) => c.value === tile.pin!.corner)?.label.toLowerCase()} of
+          the shot, so these numbers are not where it appears.
+        </p>
+      )}
       <div className="grid-2">
         <Field label="X">
           <NumberField value={tile.x} onCommit={(x) => set({ x })} />

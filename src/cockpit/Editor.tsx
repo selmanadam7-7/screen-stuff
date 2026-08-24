@@ -16,6 +16,7 @@ import { FrameClient } from "../core/frames";
 import { MediaPool } from "../core/media";
 import type { MediaResolver } from "../core/render";
 import { handlePositions, renderBoard, HANDLE_SIZE } from "../core/render";
+import { applyPins, cornerAt } from "../core/pin";
 import { newId } from "../core/doc";
 import {
   rectsOverlap,
@@ -201,6 +202,9 @@ export function Editor({
         width,
         height,
         view: corrected,
+        // The live audience rectangle, not the saved stage: a pinned camera has
+        // to ride the animation rather than wait at the destination.
+        stage: state.frame,
         doc: liveInk ? { ...state.doc, strokes: [...state.doc.strokes, liveInk] } : state.doc,
         media: media ?? pool ?? { resolve: () => null },
         now,
@@ -314,12 +318,26 @@ export function Editor({
     return stageHandleAt(state.doc.frame, point, HANDLE_SIZE * boardPerPixel() * 1.6);
   };
 
+  /**
+   * The tiles where they are actually drawn.
+   *
+   * A pinned tile's stored box is not where it appears — it is derived from the
+   * stage. Hit-testing has to agree with the picture, or clicking a camera in
+   * the corner of the shot selects whatever is underneath the place it used to
+   * live, which is the sort of bug that only shows up mid-call.
+   */
+  const shownTiles = (state: { doc: BoardDoc; frame: Rect }): Tile[] =>
+    applyPins(state.doc, state.frame).tiles;
+
   const handleUnderPoint = (point: Vec2): { tile: Tile; handle: HandleName } | null => {
     const state = useStore.getState();
     const slop = HANDLE_SIZE * boardPerPixel() * 1.6;
     for (const id of state.selection) {
-      const tile = state.doc.tiles.find((t) => t.id === id);
-      if (!tile || tile.locked) continue;
+      const tile = shownTiles(state).find((t) => t.id === id);
+      // A pinned tile has no resize handles: its size is a fraction of the
+      // stage, set in the inspector, not something you drag against a board
+      // it is no longer positioned on.
+      if (!tile || tile.locked || tile.pin) continue;
       for (const [name, position] of Object.entries(handlePositions(tile))) {
         if (Math.abs(point.x - position.x) <= slop && Math.abs(point.y - position.y) <= slop) {
           return { tile, handle: name as HandleName };
@@ -358,7 +376,7 @@ export function Editor({
     // Drawing a never-shared rectangle beats every other pointer job while it
     // is armed: it is a deliberate mode the operator turned on.
     if (state.redacting) {
-      const target = tileAt(state.doc.tiles, point, true);
+      const target = tileAt(shownTiles(state), point, true);
       if (target) {
         dragRef.current = { kind: "redact", tileId: target.id, from: point, to: point };
         state.select([target.id]);
@@ -445,7 +463,7 @@ export function Editor({
       return;
     }
 
-    const hit = tileAt(state.doc.tiles, point);
+    const hit = tileAt(shownTiles(state), point);
     if (hit) {
       const additive = event.shiftKey;
       const alreadySelected = state.selection.includes(hit.id);
@@ -454,8 +472,9 @@ export function Editor({
 
       const ids = useStore.getState().selection;
       const originals = new Map<string, Rect>();
+      const shown = shownTiles(state);
       for (const id of ids) {
-        const tile = state.doc.tiles.find((t) => t.id === id);
+        const tile = shown.find((t) => t.id === id);
         if (tile && !tile.locked) originals.set(id, tileRect(tile));
       }
       dragRef.current = { kind: "move", from: point, originals, moved: false };
@@ -483,7 +502,7 @@ export function Editor({
         state.setHover(null);
         setCursor(state.doc.stageLocked ? "not-allowed" : "move");
       } else {
-        const hit = tileAt(state.doc.tiles, point);
+        const hit = tileAt(shownTiles(state), point);
         state.setHover(hit?.id ?? null);
         setCursor(
           state.redacting
@@ -523,7 +542,7 @@ export function Editor({
 
         const ids = [...drag.originals.keys()];
         const tolerance = boardPerPixel() * 7;
-        const others = state.doc.tiles
+        const others = shownTiles(state)
           .filter((t) => !ids.includes(t.id) && !t.hidden)
           .map(tileRect);
         others.push(state.doc.frame);
@@ -545,7 +564,19 @@ export function Editor({
             ...d,
             tiles: d.tiles.map((t) => {
               const original = drag.originals.get(t.id);
-              return original ? { ...t, x: original.x + finalDx, y: original.y + finalDy } : t;
+              if (!original) return t;
+              // A pinned tile cannot be dragged off the corner by accident: it
+              // moves to whichever corner you drop it in. Dragging it away and
+              // watching it snap back would read as broken, and silently
+              // unpinning it would lose the setting the operator wanted.
+              if (t.pin) {
+                const centre = {
+                  x: original.x + finalDx + original.w / 2,
+                  y: original.y + finalDy + original.h / 2,
+                };
+                return { ...t, pin: { ...t.pin, corner: cornerAt(state.frame, centre) } };
+              }
+              return { ...t, x: original.x + finalDx, y: original.y + finalDy };
             }),
           }),
           { history: false },
@@ -579,7 +610,7 @@ export function Editor({
         // Snap the stage to the tiles, which is how you line a shot up on a
         // monitor edge without squinting.
         const tolerance = boardPerPixel() * 7;
-        const others = state.doc.tiles.filter((tile) => !tile.hidden).map(tileRect);
+        const others = shownTiles(state).filter((tile) => !tile.hidden).map(tileRect);
         const snapped = event.altKey
           ? { x: moved.x, y: moved.y, guides: { vertical: [], horizontal: [] } }
           : snapToNeighbours(moved, others, tolerance);
@@ -656,7 +687,7 @@ export function Editor({
         h: Math.abs(drag.to.y - drag.from.y),
       };
       if (area.w > 4 && area.h > 4) {
-        const hits = state.doc.tiles
+        const hits = shownTiles(state)
           .filter((t) => !t.hidden && !t.locked && rectsOverlap(area, tileRect(t)))
           .map((t) => t.id);
         state.select(hits, drag.additive);
@@ -702,7 +733,7 @@ export function Editor({
   const onDoubleClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const state = useStore.getState();
     const point = toBoard(event);
-    const hit = tileAt(state.doc.tiles, point, true);
+    const hit = tileAt(shownTiles(state), point, true);
     if (hit) {
       state.toggleSpotlight(hit.id);
       return;
@@ -725,7 +756,7 @@ export function Editor({
 
   const openMenu = (event: { clientX: number; clientY: number }, point: Vec2) => {
     const state = useStore.getState();
-    const hit = tileAt(state.doc.tiles, point, true);
+    const hit = tileAt(shownTiles(state), point, true);
     if (hit && !state.selection.includes(hit.id)) state.select([hit.id]);
 
     const onStage = !hit && stageUnderPoint(point) !== null;
